@@ -152,9 +152,10 @@ def is_within(path: Path, root: Path) -> bool:
 
 
 def workspace_path(value: str | None) -> Path:
-    workspace = (
-        Path(value).expanduser().resolve() if value else DEFAULT_WORKSPACE.resolve()
-    )
+    unresolved = Path(value).expanduser() if value else DEFAULT_WORKSPACE
+    if not unresolved.is_absolute():
+        raise ManageError("workspace must be an absolute path")
+    workspace = unresolved.resolve()
     if is_within(workspace, SKILL_ROOT):
         raise ManageError("workspace must be outside the Skill checkout")
     return workspace
@@ -635,6 +636,10 @@ def validate_run_image(run_dir: Path, item: dict) -> None:
     digest = sha256_file(image)
     if item.get("sha256") != digest:
         raise ManageError(f"run image hash mismatch: {raw_path}")
+    for field in ("placement", "alt"):
+        value = item.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ManageError(f"run image is missing {field}: {raw_path}")
 
 
 def require_resolved_brief(workspace: Path, run_dir: Path) -> dict:
@@ -862,6 +867,12 @@ def self_check() -> dict:
             pass
         else:
             raise AssertionError("workspace inside the Skill checkout was accepted")
+        try:
+            workspace_path("relative-workspace")
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("relative workspace path was accepted")
         common_doctor = doctor(root / "common-workspace")
         assert common_doctor["browser"] is None
         assert set(common_doctor["runtime_checks"]) == {"web", "imagegen"}
@@ -1027,12 +1038,16 @@ def self_check() -> dict:
                         "path": "images/image.png",
                         "mime": "image/png",
                         "sha256": hashlib.sha256(one_pixel_png).hexdigest(),
+                        "placement": "after introduction",
+                        "alt": "Self-check body image",
                     }
                 ],
                 "thumbnail": {
                     "path": "images/image.png",
                     "mime": "image/png",
                     "sha256": hashlib.sha256(one_pixel_png).hexdigest(),
+                    "placement": "thumbnail",
+                    "alt": "Self-check thumbnail",
                     "text": "Self check",
                     "text_verified": False,
                 },
@@ -1059,6 +1074,17 @@ def self_check() -> dict:
         (run_dir / "image-plan.md").write_text(
             "# Image plan\n\n- thumbnail text: Self check\n", encoding="utf-8"
         )
+        package = read_json(run_dir / "article-package.json")
+        del package["images"][0]["placement"]
+        write_json(run_dir / "article-package.json", package)
+        try:
+            checkpoint(workspace, "self-check", "preflight", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("image without placement was accepted")
+        package["images"][0]["placement"] = "after introduction"
+        write_json(run_dir / "article-package.json", package)
         checkpoint(workspace, "self-check", "preflight", "completed", None)
         saved = checkpoint(
             workspace,
