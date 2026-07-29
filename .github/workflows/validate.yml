@@ -10,13 +10,18 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: write-note-drafts
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+        with:
+          path: write-note-drafts
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements-validation.txt
+          cache-dependency-path: write-note-drafts/requirements-validation.txt
       - run: python -m pip install --requirement requirements-validation.txt
       - run: python scripts/validate_skill.py .
       - run: python scripts/manage.py self-check
