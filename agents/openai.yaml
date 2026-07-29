@@ -1,0 +1,7 @@
+interface:
+  display_name: "Note Draft Pipeline"
+  short_description: "初回育成から画像生成・note下書き保存まで安全に自動実行"
+  default_prompt: "Use $write-note-drafts to run its environment Doctor, complete mandatory onboarding if needed, then follow my guided or autopilot settings and save the finished article as an unpublished note draft."
+
+policy:
+  allow_implicit_invocation: true
