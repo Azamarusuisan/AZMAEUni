@@ -1,0 +1,1243 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Note Draft Pipeline — 導入・運用マニュアル</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f6f8f7;
+    --surface-2: #eef2f0;
+    --ink: #14201c;
+    --ink-2: #55655f;
+    --ink-3: #86948f;
+    --rule: #e2e8e5;
+    --accent: #0f8a72;
+    --accent-ink: #0b6b59;
+    --accent-soft: #e7f4f0;
+    --brain: #a8620a;
+    --brain-soft: #fbf0e0;
+    --warn: #b4472c;
+    --warn-soft: #fdeee9;
+    --term-bg: #10201c;
+    --term-ink: #d6e5df;
+    --term-dim: #7d9a91;
+    --term-accent: #5fd3ae;
+
+    --sans: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", "Helvetica Neue", Arial, sans-serif;
+    --serif: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "MS PMincho", "Noto Serif JP", Georgia, serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Cascadia Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1412; --surface: #161e1b; --surface-2: #1d2724;
+      --ink: #e6ede9; --ink-2: #9dada7; --ink-3: #74837e; --rule: #253029;
+      --accent: #4ec5a4; --accent-ink: #6fd6b9; --accent-soft: #12312a;
+      --brain: #dda661; --brain-soft: #2f2416;
+      --warn: #e08a70; --warn-soft: #33201a;
+      --term-bg: #08100e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1412; --surface: #161e1b; --surface-2: #1d2724;
+    --ink: #e6ede9; --ink-2: #9dada7; --ink-3: #74837e; --rule: #253029;
+    --accent: #4ec5a4; --accent-ink: #6fd6b9; --accent-soft: #12312a;
+    --brain: #dda661; --brain-soft: #2f2416;
+    --warn: #e08a70; --warn-soft: #33201a;
+    --term-bg: #08100e;
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff; --surface: #f6f8f7; --surface-2: #eef2f0;
+    --ink: #14201c; --ink-2: #55655f; --ink-3: #86948f; --rule: #e2e8e5;
+    --accent: #0f8a72; --accent-ink: #0b6b59; --accent-soft: #e7f4f0;
+    --brain: #a8620a; --brain-soft: #fbf0e0;
+    --warn: #b4472c; --warn-soft: #fdeee9;
+    --term-bg: #10201c;
+  }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 16px; line-height: 1.95;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ OS switch ============ */
+  :root[data-os="mac"] .os-win { display: none !important; }
+  :root[data-os="win"] .os-mac { display: none !important; }
+
+  /* ============ chrome ============ */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; gap: 14px;
+    padding: 0 20px; height: 58px;
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: saturate(140%) blur(10px);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mark { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700; }
+  .mark .dot { width: 10px; height: 10px; border-radius: 2px; background: var(--accent); box-shadow: 4px 4px 0 0 var(--brain); }
+  .mark .sub { font-family: var(--mono); font-size: 11px; color: var(--ink-3); font-weight: 400; }
+  @media (max-width: 620px) { .mark .sub { display: none; } }
+
+  .osswitch { margin-left: auto; display: flex; gap: 0; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; background: var(--surface); }
+  .osswitch button {
+    font: inherit; font-size: 12px; font-weight: 700; font-family: var(--sans);
+    padding: 5px 14px; border: 0; background: none; color: var(--ink-2); cursor: pointer; line-height: 1.6;
+  }
+  .osswitch button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  :root[data-theme="dark"] .osswitch button[aria-pressed="true"],
+  .osswitch button[aria-pressed="true"] { color: #06231c; }
+
+  /* ============ shell ============ */
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 140px; display: grid; grid-template-columns: minmax(0,1fr); gap: 52px; }
+  @media (min-width: 1040px) { .shell { grid-template-columns: minmax(0,720px) 240px; justify-content: center; align-items: start; } }
+
+  .toc { display: none; }
+  @media (min-width: 1040px) {
+    .toc { display: block; position: sticky; top: 90px; padding-top: 10px; font-size: 13px; line-height: 1.62; }
+  }
+  .toc-label { font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; }
+  .toc ol { list-style: none; display: flex; flex-direction: column; gap: 8px; border-left: 1px solid var(--rule); }
+  .toc a { display: block; padding-left: 14px; margin-left: -1px; border-left: 2px solid transparent; color: var(--ink-2); text-decoration: none; }
+  .toc a:hover, .toc a:focus-visible { color: var(--accent-ink); border-left-color: var(--accent); }
+
+  article { min-width: 0; }
+
+  .hero { padding: 64px 0 30px; display: flex; flex-direction: column; gap: 18px; }
+  .eyebrow { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent-ink); font-weight: 700; }
+  h1 { font-family: var(--serif); font-size: clamp(28px,5vw,42px); line-height: 1.44; font-weight: 600; text-wrap: balance; }
+  .lede { font-size: 16.5px; color: var(--ink-2); max-width: 40em; }
+  .byline { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--ink-3); font-family: var(--mono); }
+
+  /* ============ outcome first ============ */
+  .outcome {
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--accent);
+    background: var(--bg);
+    margin-bottom: 10px;
+    scroll-margin-top: 78px;
+  }
+  .outcome-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+    padding: 12px 16px; border-bottom: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  }
+  .outcome-head strong { color: var(--ink); font-family: var(--sans); font-size: 13px; }
+  .request {
+    display: grid; grid-template-columns: 104px minmax(0,1fr);
+    border-bottom: 1px solid var(--rule);
+  }
+  .request-label, .result-label {
+    padding: 19px 16px; background: var(--surface);
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+    color: var(--ink-3); text-transform: uppercase;
+  }
+  .request blockquote {
+    padding: 17px 20px; font-family: var(--serif); font-size: clamp(18px,3vw,23px);
+    line-height: 1.65; font-weight: 600;
+  }
+  .work-path {
+    list-style: none; display: grid; grid-template-columns: repeat(6,minmax(0,1fr));
+    border-bottom: 1px solid var(--rule); background: var(--surface);
+  }
+  .work-path li {
+    position: relative; padding: 13px 5px; text-align: center;
+    font-size: 11.5px; font-weight: 700; color: var(--ink-2);
+  }
+  .work-path li:not(:last-child)::after {
+    content: "→"; position: absolute; right: -5px; color: var(--ink-3); font-family: var(--mono);
+  }
+  .result {
+    display: grid; grid-template-columns: 104px minmax(0,1fr);
+  }
+  .result-body { padding: 17px 20px 20px; }
+  .result-body > strong {
+    display: block; font-family: var(--serif); font-size: 20px;
+    line-height: 1.55; margin-bottom: 12px;
+  }
+  .deliverables {
+    display: flex; flex-wrap: wrap; gap: 7px;
+    list-style: none;
+  }
+  .deliverables li {
+    padding: 3px 9px; border: 1px solid var(--rule); background: var(--surface);
+    font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+  }
+  .outcome-truth {
+    display: grid; grid-template-columns: 1fr;
+    margin-top: 14px; border-top: 1px solid var(--rule);
+  }
+  .truth-row {
+    display: grid; grid-template-columns: 132px minmax(0,1fr);
+    gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rule);
+    font-size: 13.5px; line-height: 1.75;
+  }
+  .truth-row dt { font-weight: 700; }
+  .truth-row dd { color: var(--ink-2); }
+  .truth-row.brain dt { color: var(--brain); }
+  .truth-row.stop dt { color: var(--warn); }
+  .start-links { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 18px; font-size: 13.5px; font-weight: 700; }
+  .start-links a { text-decoration-thickness: 1px; }
+
+  @media (max-width: 560px) {
+    .hero { padding-top: 44px; }
+    .outcome-head { align-items: flex-start; flex-direction: column; gap: 2px; }
+    .request, .result { grid-template-columns: 1fr; }
+    .request-label, .result-label { padding: 8px 13px; }
+    .request blockquote, .result-body { padding: 14px 13px 17px; }
+    .work-path { grid-template-columns: repeat(3,1fr); }
+    .work-path li:nth-child(3)::after { display: none; }
+    .truth-row { grid-template-columns: 1fr; gap: 2px; }
+  }
+
+  section { padding-top: 60px; scroll-margin-top: 82px; }
+  h2 { font-family: var(--serif); font-size: 25px; line-height: 1.5; font-weight: 600; margin-bottom: 18px; display: flex; align-items: baseline; gap: 14px; text-wrap: balance; }
+  h2 .num { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); flex: none; padding-top: 2px; }
+  h3 { font-size: 17px; font-weight: 700; margin: 36px 0 12px; }
+  h4 { font-size: 14px; font-weight: 700; color: var(--ink-2); margin: 24px 0 8px; }
+  p { margin-bottom: 18px; max-width: 40em; }
+  a { color: var(--accent-ink); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); border-radius: 3px; padding: .12em .4em; word-break: break-word; }
+
+  ul.plain { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; max-width: 40em; }
+  ul.plain li { padding-left: 18px; position: relative; }
+  ul.plain li::before { content: ""; position: absolute; left: 1px; top: .84em; width: 6px; height: 1px; background: var(--ink-3); }
+
+  ol.steps { list-style: none; counter-reset: step; display: flex; flex-direction: column; gap: 12px; margin-bottom: 22px; max-width: 40em; }
+  ol.steps > li { counter-increment: step; padding-left: 36px; position: relative; }
+  ol.steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: .3em;
+    width: 23px; height: 23px; border-radius: 50%; border: 1px solid var(--rule); background: var(--surface);
+    color: var(--ink-2); font-family: var(--mono); font-size: 11px; display: grid; place-items: center; line-height: 1;
+  }
+
+  /* ============ terminal ============ */
+  .term { background: var(--term-bg); border-radius: 8px; overflow: hidden; margin-bottom: 22px; border: 1px solid color-mix(in srgb, var(--term-bg) 70%, var(--rule)); }
+  .term-bar { display: flex; align-items: center; gap: 7px; padding: 9px 13px; background: rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.07); }
+  .term-bar i { width: 10px; height: 10px; border-radius: 50%; background: #4a5d57; display: block; }
+  .term-bar i:first-child { background: #d6614f; }
+  .term-bar i:nth-child(2) { background: #d6a94f; }
+  .term-bar i:nth-child(3) { background: #57b184; }
+  .term-bar span { margin-left: 8px; font-family: var(--mono); font-size: 11px; color: var(--term-dim); }
+  .term pre { margin: 0; padding: 15px 17px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.72; color: var(--term-ink); white-space: pre; }
+  .term .c { color: var(--term-accent); }
+  .term .o { color: var(--term-dim); }
+  .term .e { color: #f0846c; }
+
+  pre.plainblock { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 15px 17px; overflow-x: auto; margin-bottom: 20px; font-family: var(--mono); font-size: 12.5px; line-height: 1.72; white-space: pre; }
+
+  /* ============ chat log ============ */
+  .chat { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; max-width: 40em; }
+  .msg { border: 1px solid var(--rule); border-radius: 8px; padding: 12px 15px; font-size: 14.5px; line-height: 1.8; background: var(--surface); }
+  .msg.you { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+  .msg .who { display: block; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--ink-3); margin-bottom: 4px; }
+  .msg.you .who { color: var(--accent-ink); }
+
+  /* ============ tables ============ */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 22px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; line-height: 1.7; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { background: var(--surface); font-size: 11.5px; letter-spacing: .05em; color: var(--ink-2); font-weight: 700; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* ============ callouts ============ */
+  .box { border: 1px solid var(--rule); border-left: 3px solid var(--accent); background: var(--surface); border-radius: 4px; padding: 15px 17px; margin-bottom: 22px; font-size: 14.5px; line-height: 1.85; max-width: 42em; }
+  .box.stop { border-left-color: var(--warn); background: var(--warn-soft); }
+  .box.brainy { border-left-color: var(--brain); }
+  .box .head { display: block; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+  .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+
+  /* ============ chips ============ */
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; line-height: 1.7; padding: 1px 9px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; vertical-align: middle; }
+  .chip.ok { color: var(--accent-ink); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 32%, transparent); }
+  .chip.port { color: var(--ink-2); background: var(--surface-2); border-color: var(--rule); }
+  .chip.dev { color: var(--brain); background: var(--brain-soft); border-color: color-mix(in srgb, var(--brain) 34%, transparent); }
+  .chip.no { color: var(--warn); background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+
+  /* ============ screenshot slots ============ */
+  figure.shot { margin-bottom: 24px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  figure.shot img { display: block; width: 100%; height: auto; }
+  figure.shot figcaption { padding: 10px 14px; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--rule); line-height: 1.7; }
+  figure.shot .todo { display: none; padding: 22px 18px; }
+  figure.shot.missing { border-style: dashed; }
+  figure.shot.missing img { display: none; }
+  figure.shot.missing .todo { display: block; }
+  figure.shot.missing figcaption { border-top: 0; }
+  .todo .t-label { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--brain); font-weight: 700; display: block; margin-bottom: 8px; }
+  .todo .t-what { font-size: 14.5px; font-weight: 700; margin-bottom: 10px; display: block; }
+  .todo .t-how { font-size: 13.5px; color: var(--ink-2); line-height: 1.8; margin-bottom: 12px; }
+  .todo pre { background: var(--bg); border: 1px solid var(--rule); border-radius: 5px; padding: 10px 12px; overflow-x: auto; font-family: var(--mono); font-size: 12px; white-space: pre; }
+
+  /* ============ flow ============ */
+  ul.flow { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
+  ul.flow li { font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 4px; background: var(--surface); border: 1px solid var(--rule); color: var(--ink-2); }
+  ul.flow li.hi { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--accent-ink); }
+  ul.flow li.brainy { background: var(--brain-soft); border-color: color-mix(in srgb, var(--brain) 30%, transparent); color: var(--brain); }
+
+  dl.spec { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 8px 20px; font-size: 14px; margin-bottom: 22px; align-items: baseline; }
+  dl.spec dt { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+
+  details { border-bottom: 1px solid var(--rule); padding: 14px 0; }
+  summary { cursor: pointer; font-weight: 700; font-size: 15px; list-style: none; display: flex; gap: 10px; align-items: baseline; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "＋"; color: var(--accent); font-size: 12px; flex: none; }
+  details[open] summary::before { content: "−"; }
+  details > *:not(summary) { margin-top: 12px; }
+  details > *:last-child { margin-bottom: 0; }
+
+  footer { margin-top: 76px; padding-top: 28px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--ink-3); display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="mark"><span class="dot"></span>Note Draft Pipeline<span class="sub">導入・運用マニュアル</span></span>
+  <div class="osswitch" role="group" aria-label="OSを選択">
+    <button type="button" data-os="mac" aria-pressed="true">macOS</button>
+    <button type="button" data-os="win" aria-pressed="false">Windows</button>
+  </div>
+</header>
+
+<div class="shell">
+<article>
+
+  <div class="hero">
+    <span class="eyebrow">一度育てて、何度でも使う</span>
+    <h1>「noteを書いて」で、調査から未公開下書きの保存まで終わる。</h1>
+    <p class="lede">最初に好みと文体を教えれば、次からはテーマを一行伝えるだけ。記事、画像、出典を作り、保存後に同じ下書きを読み直して確認します。</p>
+    <p class="byline"><span>macOS / Windows</span><span>Codex · Claude Code · Hermes</span><span>2026-07-31</span></p>
+  </div>
+
+  <div class="outcome" id="outcome" aria-labelledby="outcome-title">
+    <div class="outcome-head">
+      <strong id="outcome-title">導入すると、ここまでが一つの仕事になります</strong>
+      <span>ONE REQUEST / ONE DRAFT</span>
+    </div>
+
+    <div class="request">
+      <span class="request-label">あなたの依頼</span>
+      <blockquote>「○○について、私の文体でnoteを書いて」</blockquote>
+    </div>
+
+    <ol class="work-path" aria-label="Skillが行う作業">
+      <li>調べる</li>
+      <li>構成する</li>
+      <li>書く</li>
+      <li>画像を作る</li>
+      <li>下書き保存</li>
+      <li>読み直す</li>
+    </ol>
+
+    <div class="result">
+      <span class="result-label">最後に残るもの</span>
+      <div class="result-body">
+        <strong>投稿直前まで整った未公開下書きと、検証できる制作一式。</strong>
+        <ul class="deliverables" aria-label="成果物">
+          <li>article.md</li>
+          <li>画像</li>
+          <li>出典一覧</li>
+          <li>未公開下書き</li>
+          <li>保存・再読記録</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <dl class="outcome-truth">
+    <div class="truth-row">
+      <dt>note</dt>
+      <dd><strong>下書き保存と保存後の再確認まで。</strong>公開はあなたが内容を読んでから行います。</dd>
+    </div>
+    <div class="truth-row brain">
+      <dt>Brain</dt>
+      <dd><strong>記事と画像を作るところまで。</strong>編集画面の入力先と販売設定への動線は実機確認済みです。現行版では転記、価格・紹介率・有料ライン、保存を人が操作します。</dd>
+    </div>
+    <div class="truth-row stop">
+      <dt>自動でしないこと</dt>
+      <dd>公開、販売開始、予約投稿、アカウント切替。外に出す最後の判断は人に残します。</dd>
+    </div>
+  </dl>
+
+  <p class="start-links">
+    <a href="#onboarding">どんなふうに育てるかを見る →</a>
+    <a href="#write">記事を1本書かせる流れを見る →</a>
+    <a href="#install">インストールへ進む →</a>
+  </p>
+
+  <section id="read">
+    <h2><span class="num">00</span>このマニュアルの読み方</h2>
+    <p>右上のスイッチで <strong>macOS / Windows</strong> を切り替えると、コマンドとパスがその OS 用に入れ替わります。ターミナルの出力は実機で実行した本物です。</p>
+    <p>ステータスの見方：<span class="chip ok">実装済み</span> 現行版で動作 　<span class="chip dev">人が操作</span> 金額や公開範囲に関わる区間 　<span class="chip no">採用しない</span></p>
+    <div class="box stop">
+      <span class="head">先に読む</span>
+      <p><strong>Python 3.10 以上が必須です。</strong>macOS 標準の <code>python3</code>（3.9.x）では Doctor が必ず失敗し、記事作成に進めません。<a href="#prereq">01 前提チェック</a>で対処してください。</p>
+    </div>
+  </section>
+
+  <section id="prereq">
+    <h2><span class="num">01</span>前提チェック</h2>
+    <p>まずこれを流して、足りないものを確認します。</p>
+
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — 前提チェック</span></div>
+<pre><span class="c">git --version; gh --version | head -1; python3 --version; node --version</span>
+<span class="o">git version 2.50.1 (Apple Git-155)
+gh version 2.95.0 (2026-06-17)
+Python 3.9.6          </span><span class="e">← 3.10 未満。要対処</span><span class="o">
+v24.17.0</span></pre>
+    </div>
+
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — 前提チェック</span></div>
+<pre><span class="c">git --version; gh --version; py -0p; node --version</span>
+<span class="o">git version 2.x.x
+gh version 2.x.x
+ -V:3.11 *        C:\Users\you\AppData\Local\Programs\Python\Python311\python.exe
+v22.x.x</span></pre>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>必要なもの</th><th>用途</th><th>無いとどうなるか</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Python 3.10+</strong></td><td>Skill 本体の管理スクリプト</td><td>Doctor が <code>blocked</code>。記事作成に進めない</td></tr>
+          <tr><td>Git</td><td>Skill の取得・更新</td><td>インストール不可</td></tr>
+          <tr><td>GitHub CLI (<code>gh</code>)</td><td>プライベートリポジトリのクローン</td><td><code>git clone</code> で代替可（公開リポジトリなら不要）</td></tr>
+          <tr><td>Chrome + エージェントの拡張</td><td>note の下書き保存／Brain 編集画面の確認</td><td>CMS を操作できない。本文はローカルに残る</td></tr>
+          <tr><td>画像生成 Skill / MCP</td><td>サムネイル・図解</td><td>CMS を触る前に停止する</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="os-mac">Python 3.10+ を用意する（macOS）</h3>
+    <div class="os-mac">
+      <p>このマシンには既に <code>python3.11</code> が入っています（<code>/Users/stork/.local/bin/python3.11</code> / 3.11.15）。<code>python3</code> がまだ 3.9 を指しているだけなので、PATH の優先順位を直します。</p>
+      <div class="term">
+        <div class="term-bar"><i></i><i></i><i></i><span>zsh — Python を 3.11 に向ける</span></div>
+<pre><span class="c">which -a python3</span>
+<span class="o">/usr/bin/python3</span>
+
+<span class="c">python3.11 --version</span>
+<span class="o">Python 3.11.15</span>
+
+<span class="o"># ~/.zshrc の末尾に追記して、~/.local/bin を優先させる</span>
+<span class="c">echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc</span>
+<span class="c">exec zsh -l</span>
+
+<span class="c">python3 --version</span>
+<span class="o">Python 3.11.15</span>   <span class="c">← これで OK</span></pre>
+      </div>
+      <p>入っていない場合は <a href="https://www.python.org/downloads/macos/">python.org の macOS 版</a>を入れるのが確実です。PATH をいじりたくなければ、以降のコマンドの <code>python3</code> をすべて <code>python3.11</code> に読み替えても構いません。</p>
+    </div>
+
+    <h3 class="os-win">Python 3.10+ を用意する（Windows）</h3>
+    <div class="os-win">
+      <p><a href="https://www.python.org/downloads/windows/">python.org の Windows 版</a>を入れます。インストーラの最初の画面で <strong>「Add python.exe to PATH」に必ずチェック</strong>を入れてください。</p>
+      <div class="term">
+        <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — 確認</span></div>
+<pre><span class="c">py -0p</span>          <span class="o"># 入っている Python の一覧</span>
+<span class="c">py -3.11 --version</span>
+<span class="o">Python 3.11.x</span></pre>
+      </div>
+      <p>Windows では <code>python3</code> ではなく <strong><code>py -3.11</code></strong> で呼ぶのが安全です（Microsoft Store の見せかけの <code>python3</code> を踏まないため）。以降の手順もその表記にしてあります。</p>
+    </div>
+  </section>
+
+  <section id="which-git">
+    <h2><span class="num">02</span>どの Git を入れるのか</h2>
+    <p>1 本だけです。note の下書き作成と保存後の検証、Brain 向けの記事・画像作成、文体学習、定期実行がこのリポジトリに入っています。</p>
+
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="c">gh repo clone Azamarusuisan/AZMAEUni ~/.agents/skills/write-note-drafts</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell</span></div>
+<pre><span class="c">gh repo clone Azamarusuisan/AZMAEUni "$env:USERPROFILE\.agents\skills\write-note-drafts"</span></pre>
+    </div>
+
+    <dl class="spec">
+      <dt>リポジトリ</dt><dd><code>Azamarusuisan/AZMAEUni</code></dd>
+      <dt>Skill 名</dt><dd><code>write-note-drafts</code></dd>
+      <dt>置き場所</dt><dd><code class="os-mac">~/.agents/skills/write-note-drafts</code><code class="os-win">%USERPROFILE%\.agents\skills\write-note-drafts</code></dd>
+    </dl>
+
+    <p>ディレクトリ名は <code>write-note-drafts</code> にしてください。Skill 名とフォルダ名の一致が検証されるため、別名にすると読み込みに失敗します。</p>
+  </section>
+
+  <section id="install">
+    <h2><span class="num">03</span>インストール</h2>
+
+    <h3>Step 1 — 本体を取得する</h3>
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — 本体の取得</span></div>
+<pre><span class="c">mkdir -p ~/.agents/skills</span>
+<span class="c">gh repo clone Azamarusuisan/AZMAEUni ~/.agents/skills/write-note-drafts</span>
+<span class="o">Cloning into '/Users/you/.agents/skills/write-note-drafts'...
+remote: Enumerating objects: done.
+Receiving objects: 100% done.</span>
+
+<span class="c">ls ~/.agents/skills/write-note-drafts</span>
+<span class="o">LICENSE      README.md    SKILL.md     agents/      assets/
+references/  scripts/     requirements-validation.txt</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — 本体の取得</span></div>
+<pre><span class="c">mkdir "$env:USERPROFILE\.agents\skills" -Force</span>
+<span class="c">gh repo clone Azamarusuisan/AZMAEUni "$env:USERPROFILE\.agents\skills\write-note-drafts"</span>
+
+<span class="c">dir "$env:USERPROFILE\.agents\skills\write-note-drafts"</span>
+<span class="o">LICENSE  README.md  SKILL.md  agents  assets
+references  scripts  requirements-validation.txt</span></pre>
+    </div>
+    <p><code>gh</code> が未認証なら <code>gh auth login</code> を先に実行します。公開リポジトリなら <code>git clone https://github.com/Azamarusuisan/AZMAEUni.git &lt;パス&gt;</code> でも同じです。</p>
+
+    <h3>Step 2 — エージェントから見えるようにする</h3>
+
+    <h4>Claude Code</h4>
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — シンボリックリンク</span></div>
+<pre><span class="c">mkdir -p ~/.claude/skills</span>
+<span class="c">ln -s ~/.agents/skills/write-note-drafts ~/.claude/skills/write-note-drafts</span>
+<span class="c">ls -l ~/.claude/skills/write-note-drafts</span>
+<span class="o">lrwxr-xr-x  ... write-note-drafts -> /Users/you/.agents/skills/write-note-drafts</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — ジャンクション</span></div>
+<pre><span class="o"># 管理者権限も開発者モードも不要な「ジャンクション」を使う</span>
+<span class="c">mkdir "$env:USERPROFILE\.claude\skills" -Force</span>
+<span class="c">cmd /c mklink /J "$env:USERPROFILE\.claude\skills\write-note-drafts" "$env:USERPROFILE\.agents\skills\write-note-drafts"</span>
+<span class="o">Junction created for ...\.claude\skills\write-note-drafts &lt;&lt;===&gt;&gt; ...\.agents\skills\write-note-drafts</span></pre>
+    </div>
+    <div class="box stop os-mac">
+      <span class="head">注意</span>
+      <p>既に <code>~/.claude/skills/write-note-drafts</code> が存在する状態で <code>ln -s</code> を実行すると、リンクが<strong>そのディレクトリの中</strong>に作られて二重構造になります。先に <code>ls ~/.claude/skills</code> で確認してください。</p>
+    </div>
+    <div class="box stop os-win">
+      <span class="head">注意</span>
+      <p><code>New-Item -ItemType SymbolicLink</code> は管理者権限か開発者モードが要ります。上記の <code>mklink /J</code>（ジャンクション）ならどちらも不要です。リンクを消すときは <code>rmdir</code>（<code>del</code> ではなく）を使ってください。</p>
+    </div>
+
+    <h4>Codex</h4>
+    <p class="os-mac">共有ディレクトリ <code>~/.agents/skills</code> を自動で見にいくので、追加設定は不要です。</p>
+    <p class="os-win">共有ディレクトリ <code>%USERPROFILE%\.agents\skills</code> を自動で見にいくので、追加設定は不要です。</p>
+
+    <h4>Hermes</h4>
+    <p class="os-mac"><code>~/.hermes/config.yaml</code> に <code>~/.agents/skills</code> の<strong>絶対パス</strong>を追加します。</p>
+    <p class="os-win"><code>%USERPROFILE%\.hermes\config.yaml</code> に <code>.agents\skills</code> の<strong>絶対パス</strong>を追加します。</p>
+    <pre class="plainblock os-mac">skills:
+  external_dirs:
+    - /Users/you/.agents/skills</pre>
+    <pre class="plainblock os-win">skills:
+  external_dirs:
+    - C:/Users/you/.agents/skills</pre>
+    <div class="term">
+      <div class="term-bar"><i></i><i></i><i></i><span>確認</span></div>
+<pre><span class="c">hermes skills list</span>
+<span class="o">write-note-drafts   Interview, learn a user's Japanese writing style, ...</span></pre>
+    </div>
+    <p>設定後は<strong>新しいセッションを開き直す</strong>まで反映されません。</p>
+  </section>
+
+  <section id="verify">
+    <h2><span class="num">04</span>動作確認</h2>
+    <p>記事を書かせる前に、ここまでが正しいかを確かめます。以下はすべて実機で取った出力です。</p>
+
+    <h3>1. 本体の自己診断</h3>
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — self-check</span></div>
+<pre><span class="c">cd ~/.agents/skills/write-note-drafts</span>
+<span class="c">python3 scripts/manage.py self-check</span>
+<span class="o">{
+  "self_check": "passed"
+}</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — self-check</span></div>
+<pre><span class="c">cd "$env:USERPROFILE\.agents\skills\write-note-drafts"</span>
+<span class="c">py -3.11 scripts\manage.py self-check</span>
+<span class="o">{
+  "self_check": "passed"
+}</span></pre>
+    </div>
+
+    <div class="box stop">
+      <span class="head">ここで失敗したら</span>
+      <p>Python が 3.9 のままだと、次のように落ちます。これは環境の問題であってバグではありません。<a href="#prereq">01</a> に戻ってください。</p>
+      <div class="term" style="margin:12px 0 0">
+        <div class="term-bar"><i></i><i></i><i></i><span>Python 3.9.6 で実行した場合</span></div>
+<pre><span class="c">python3 scripts/manage.py self-check</span>
+<span class="e">Traceback (most recent call last):
+  File "scripts/manage.py", line 1239, in &lt;module&gt;
+    raise SystemExit(main())
+  File "scripts/manage.py", line 880, in self_check
+    assert chrome_doctor["status"] == "pending"
+AssertionError</span></pre>
+      </div>
+    </div>
+
+    <h3>2. ワークスペースを作る</h3>
+    <p>設定と記事の保存先です。既定は次の場所で、環境変数 <code>NOTE_DRAFT_PIPELINE_HOME</code> でも変えられます。</p>
+    <pre class="plainblock os-mac">~/.config/write-note-drafts</pre>
+    <pre class="plainblock os-win">%USERPROFILE%\.config\write-note-drafts</pre>
+
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — status → init</span></div>
+<pre><span class="c">python3 scripts/manage.py status --workspace ~/.config/write-note-drafts</span>
+<span class="o">{
+  "browser": null,
+  "expected_account_handle": null,
+  "initialized": false,
+  "runs": [],
+  "status": "uninitialized",
+  "workspace": "/Users/you/.config/write-note-drafts"
+}</span>
+
+<span class="c">python3 scripts/manage.py init --browser chrome --workspace ~/.config/write-note-drafts</span>
+<span class="o">{
+  "browser": "chrome",
+  "copied": 6,
+  "initialized": true,
+  "skipped": 0,
+  "status": "onboarding",
+  "workspace": "/Users/you/.config/write-note-drafts"
+}</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — status → init</span></div>
+<pre><span class="c">py -3.11 scripts\manage.py status --workspace "$env:USERPROFILE\.config\write-note-drafts"</span>
+<span class="o">{
+  "browser": null,
+  "expected_account_handle": null,
+  "initialized": false,
+  "runs": [],
+  "status": "uninitialized",
+  "workspace": "C:\\Users\\you\\.config\\write-note-drafts"
+}</span>
+
+<span class="c">py -3.11 scripts\manage.py init --browser chrome --workspace "$env:USERPROFILE\.config\write-note-drafts"</span>
+<span class="o">{
+  "browser": "chrome",
+  "copied": 6,
+  "initialized": true,
+  "skipped": 0,
+  "status": "onboarding",
+  "workspace": "C:\\Users\\you\\.config\\write-note-drafts"
+}</span></pre>
+    </div>
+
+    <p><code>copied: 6</code> は、この 6 ファイルが置かれたという意味です。</p>
+    <pre class="plainblock">NOTE_GENERATOR.md      全体の目次
+PROFILE.md             発信目的・読者・トーン・CTA
+WRITING_PROFILE.md     文体学習の結果
+OPERATING_RULES.md     自動化モード、リサーチと画像の既定値
+ASSETS.md              ロゴなどローカル素材の登録簿
+templates/default.md   記事の型
+.state/workspace.json  機械用の状態（手で触らない）</pre>
+
+    <h3>3. Doctor</h3>
+    <p><code>--agent</code> には今使っているエージェントを指定します（<code>codex</code> / <code>claude</code> / <code>hermes</code>）。</p>
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — doctor</span></div>
+<pre><span class="c">python3 scripts/manage.py doctor --browser chrome --agent claude \
+  --workspace ~/.config/write-note-drafts</span>
+<span class="o">{
+  "agent": "claude",
+  "blocking_checks": [],
+  "browser": "chrome",
+  "local_checks": {
+    "platform": { "required": "any", "status": "pass", "value": "darwin" },
+    "python":   { "required": "&gt;=3.10", "status": "pass", "version": "3.11.15" },
+    "workspace":{ "status": "pass", "detail": "temporary write probe passed" }
+  },
+  "ready": false,
+  "runtime_checks": {
+    "claude_in_chrome":  { "status": "pending", ... },
+    "image_generation":  { "status": "pending", ... },
+    "web":               { "status": "pending", ... }
+  },
+  "status": "pending"
+}</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — doctor</span></div>
+<pre><span class="c">py -3.11 scripts\manage.py doctor --browser chrome --agent claude `
+  --workspace "$env:USERPROFILE\.config\write-note-drafts"</span>
+<span class="o">{
+  "agent": "claude",
+  "blocking_checks": [],
+  "browser": "chrome",
+  "local_checks": {
+    "platform": { "required": "any", "status": "pass", "value": "win32" },
+    "python":   { "required": "&gt;=3.10", "status": "pass", "version": "3.11.x" },
+    "workspace":{ "status": "pass", "detail": "temporary write probe passed" }
+  },
+  "ready": false,
+  "runtime_checks": { ... },
+  "status": "pending"
+}</span></pre>
+    </div>
+
+    <div class="box">
+      <span class="head">読み方</span>
+      <ul class="plain">
+        <li><code>blocking_checks: []</code> … ローカル側は問題なし。ここに <code>"python"</code> や <code>"platform"</code> が入っていたら先に進めません。</li>
+        <li><code>runtime_checks</code> がすべて <code>pending</code> なのは正常です。これはエージェントが会話の中で実際に呼び出して確認する項目で、コマンドラインからは判定できません。</li>
+        <li><code>ready: false</code> は「初回育成がまだ」という意味です。</li>
+      </ul>
+    </div>
+
+    <h3 class="os-win">Windows での注意</h3>
+    <div class="os-win">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>項目</th><th>Windows での扱い</th></tr></thead>
+          <tbody>
+            <tr><td>Chrome 経路</td><td><span class="chip ok">動作</span> <code>platform: any</code> なので通ります</td></tr>
+            <tr><td>Safari 経路</td><td><span class="chip no">不可</span> <code>required: "darwin"</code> のため <code>blocked</code>。<code>--browser safari</code> は選ばないでください</td></tr>
+            <tr><td>Hermes の <code>cua-driver</code></td><td>macOS 前提。Windows では Chrome 接続のみ</td></tr>
+            <tr><td>パス区切り</td><td>PowerShell では <code>\</code>。<code>config.yaml</code> の中は <code>/</code> で書くのが安全</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="term">
+        <div class="term-bar"><i></i><i></i><i></i><span>Windows で safari を選ぶとこうなる</span></div>
+<pre><span class="c">py -3.11 scripts\manage.py doctor --browser safari --agent claude --workspace ...</span>
+<span class="o">"status": "blocked",
+"blocking_checks": ["platform"],
+"platform": { "status": "blocked", "value": "win32", "required": "darwin" }</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="onboarding">
+    <h2><span class="num">05</span>初回育成をエージェントで走らせる</h2>
+    <p>ここからはターミナルではなく、エージェントとの会話です。<code>ready</code> になるまで記事作成は始まりません。</p>
+
+    <div class="chat">
+      <div class="msg you"><span class="who">あなた</span>write-note-drafts のセットアップをして</div>
+      <div class="msg"><span class="who">エージェント</span>Doctor を実行します。…ローカル側は問題ありません。ブラウザは <strong>chrome</strong> と <strong>safari</strong> のどちらを操作しますか？</div>
+      <div class="msg you"><span class="who">あなた</span>chrome</div>
+      <div class="msg"><span class="who">エージェント</span>Chrome 拡張の接続を確認しました。note を開きます。ログイン状態を確認してください。</div>
+      <div class="msg"><span class="who">エージェント</span>画面上のハンドルは <code>@your_handle</code> と読み取れました。このアカウントで合っていますか？</div>
+      <div class="msg you"><span class="who">あなた</span>合ってる</div>
+      <div class="msg"><span class="who">エージェント</span>では設定を聞きます。発信の目的、想定読者、いつもの記事の長さ、トーン、記事末の CTA を教えてください。</div>
+    </div>
+
+    <h3>聞かれること</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>カテゴリ</th><th>項目</th></tr></thead>
+        <tbody>
+          <tr><td>発信</td><td>目的、想定読者、記事長、トーン、CTA</td></tr>
+          <tr><td>リサーチ</td><td>調査の深さ、海外ソースの可否、対象期間、SEO/AIO、キーワード</td></tr>
+          <tr><td>画像</td><td>枚数、スタイル、図解の要否、サムネイル、サムネ内文字の有無</td></tr>
+          <tr><td>運用</td><td><code>自動化モード</code>（<code>guided</code>／<code>autopilot</code>）、<code>構成確認</code>（<code>毎回</code>／<code>依頼時のみ</code>）</td></tr>
+          <tr><td>文体学習</td><td>自分が書いた note 記事の URL を 2〜5 本</td></tr>
+          <tr><td>資産</td><td>ロゴなどのブランド素材、使い回す記事ルール</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box">
+      <span class="head">答え方のコツ</span>
+      <ul class="plain">
+        <li>不要な項目は空欄にせず <code>なし</code> と明示的に答えてください。空欄だと「未回答」として毎回聞かれます。</li>
+        <li><code>autopilot</code> と <code>構成確認: 毎回</code> は<strong>設定矛盾</strong>として扱われ、どちらかに寄せるまで <code>ready</code> になりません。任せたいなら <code>autopilot</code> + <code>依頼時のみ</code>。</li>
+        <li>文体学習に渡す URL は<strong>自分が書いた記事だけ</strong>にしてください。他人の記事を渡すと、その人の文体を模倣する形になります（Skill 側でも拒否します）。</li>
+      </ul>
+    </div>
+
+    <h3>完了の確認</h3>
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — status</span></div>
+<pre><span class="c">python3 scripts/manage.py status --workspace ~/.config/write-note-drafts</span>
+<span class="o">{
+  "browser": "chrome",
+  "expected_account_handle": "your_handle",
+  "initialized": true,
+  "runs": [],
+  "status": "ready"
+}</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — status</span></div>
+<pre><span class="c">py -3.11 scripts\manage.py status --workspace "$env:USERPROFILE\.config\write-note-drafts"</span>
+<span class="o">{
+  "browser": "chrome",
+  "expected_account_handle": "your_handle",
+  "initialized": true,
+  "runs": [],
+  "status": "ready"
+}</span></pre>
+    </div>
+    <p><code>"status": "ready"</code> になれば完了です。</p>
+  </section>
+
+  <section id="write">
+    <h2><span class="num">06</span>記事を 1 本書かせる</h2>
+
+    <ul class="flow">
+      <li class="hi">依頼内容の確定</li>
+      <li>リサーチ</li>
+      <li>構成</li>
+      <li>執筆</li>
+      <li>画像</li>
+      <li class="hi">プリフライト</li>
+      <li class="hi">下書き保存</li>
+      <li class="hi">再読検証</li>
+    </ul>
+
+    <div class="chat">
+      <div class="msg you"><span class="who">あなた</span>「個人開発者向けの Stripe 導入」で note 書いて</div>
+      <div class="msg"><span class="who">エージェント</span>依頼内容を確定しました。読者＝個人開発者、長さ＝約4000字、トーン＝Writing Profile 準拠、海外ソース＝可、画像＝サムネ1＋図解2。このまま進めますか？<br><span style="color:var(--ink-3);font-size:13px">※ autopilot 設定ならこの確認は入りません</span></div>
+      <div class="msg you"><span class="who">あなた</span>OK</div>
+      <div class="msg"><span class="who">エージェント</span>リサーチ完了（12ソース）。構成を出します。…下書きを保存しました。再読検証は <code>verified</code>、下書き URL は https://note.com/… です。</div>
+    </div>
+
+    <h3>モード指定</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>言い方</th><th>モード</th><th>どこまで</th></tr></thead>
+        <tbody>
+          <tr><td>「note 書いて」</td><td><code>full</code></td><td>下書き保存＋検証まで</td></tr>
+          <tr><td>「構成だけ見せて」</td><td><code>outline_only</code></td><td>構成で停止。CMS を触らない</td></tr>
+          <tr><td>「この記事で文体を学習して」</td><td><code>learn_style</code></td><td><code>WRITING_PROFILE.md</code> の更新のみ</td></tr>
+          <tr><td>「設定を変えたい」</td><td><code>setup</code></td><td>育成のやり直し</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>途中で何が保存されるか</h3>
+    <pre class="plainblock">runs/&lt;run-id&gt;/
+├─ brief.json          確定した依頼内容と、各項目の出所
+├─ research.jsonl      1行1ソース（事実・引用候補・URL・公開日・取得日）
+├─ outline.md          本文より先に確定する構成
+├─ article.md          本文
+├─ image-plan.md       画像の用途・配置・プロンプト・サムネ文言・alt
+├─ images/             生成画像
+└─ cms-receipt.json    保存結果（verified / save_unverified）</pre>
+
+    <div class="box">
+      <span class="head">この Skill の要</span>
+      <p>保存したあと、<strong>同じ下書きを開き直して</strong>タイトル・見出し・リンク・画像・サムネ・ハッシュタグと本文フィンガープリントを突合します。一致したときだけ <code>verified</code>。<code>save_unverified</code> なら下書きは存在するが中身が一致していないので、人が見てください。「保存しました」を鵜呑みにしない構造です。</p>
+    </div>
+  </section>
+
+  <section id="note-ui">
+    <h2><span class="num">07</span>note 画面で何が起きているか</h2>
+    <p>エージェントがブラウザで実際に触る場所です。自動で進みますが、止まったときにどこを見ればいいか把握しておくと復旧が早くなります。</p>
+
+    <figure class="shot">
+      <img src="shots/01-note-home.png" alt="note のホーム画面。右上にログイン中のアカウントアイコンが表示されている">
+      <div class="todo">
+        <span class="t-label">実画面の撮影ガイド（任意）</span>
+        <span class="t-what">01 — note のホーム（ログイン状態）</span>
+        <p class="t-how">右上のアカウントアイコンが写るように撮ってください。ここからハンドルを読み取って、保存済みのハンドルと照合します。</p>
+        <pre class="os-mac">screencapture -i ~/.agents/skills/write-note-drafts/docs/shots/01-note-home.png</pre>
+        <pre class="os-win">Win + Shift + S で範囲選択 → 次の名前で保存
+%USERPROFILE%\.agents\skills\write-note-drafts\docs\shots\01-note-home.png</pre>
+      </div>
+      <figcaption>01 — ログイン中の note ホーム。ここでハンドルを照合し、不一致なら停止します。</figcaption>
+    </figure>
+
+    <figure class="shot">
+      <img src="shots/02-note-editor.png" alt="note の記事エディタ。タイトル欄と本文欄、画像追加ボタン">
+      <div class="todo">
+        <span class="t-label">実画面の撮影ガイド（任意）</span>
+        <span class="t-what">02 — 記事エディタ</span>
+        <p class="t-how">タイトル欄・本文欄・画像追加ボタンが入るように撮ってください。エージェントはここにタイトル、本文、見出し、リンク、画像、alt を流し込みます。</p>
+        <pre class="os-mac">screencapture -i ~/.agents/skills/write-note-drafts/docs/shots/02-note-editor.png</pre>
+        <pre class="os-win">Win + Shift + S → %USERPROFILE%\.agents\skills\write-note-drafts\docs\shots\02-note-editor.png</pre>
+      </div>
+      <figcaption>02 — 記事エディタ。本文・見出し・リンク・画像・alt をここに入力します。</figcaption>
+    </figure>
+
+    <figure class="shot">
+      <img src="shots/03-note-publish-panel.png" alt="note の公開設定パネル。ハッシュタグと公開ボタン">
+      <div class="todo">
+        <span class="t-label">実画面の撮影ガイド（任意）</span>
+        <span class="t-what">03 — 公開設定パネル（触らない場所）</span>
+        <p class="t-how">「公開に進む」を押した先のパネルを撮ってください。エージェントは<strong>ここに到達しません</strong>。到達したら異常なので、その旨をマニュアルの注意書きと対応させます。</p>
+        <pre class="os-mac">screencapture -i ~/.agents/skills/write-note-drafts/docs/shots/03-note-publish-panel.png</pre>
+        <pre class="os-win">Win + Shift + S → %USERPROFILE%\.agents\skills\write-note-drafts\docs\shots\03-note-publish-panel.png</pre>
+      </div>
+      <figcaption>03 — 公開設定パネル。<strong>Skill はここを操作しません。</strong>公開は必ず人の手で行います。</figcaption>
+    </figure>
+
+    <figure class="shot">
+      <img src="shots/04-note-drafts.png" alt="note の下書き一覧">
+      <div class="todo">
+        <span class="t-label">実画面の撮影ガイド（任意）</span>
+        <span class="t-what">04 — 下書き一覧</span>
+        <p class="t-how">保存された下書きが並ぶ画面です。<code>cms-receipt.json</code> の内容と突き合わせる場所になります。</p>
+        <pre class="os-mac">screencapture -i ~/.agents/skills/write-note-drafts/docs/shots/04-note-drafts.png</pre>
+        <pre class="os-win">Win + Shift + S → %USERPROFILE%\.agents\skills\write-note-drafts\docs\shots\04-note-drafts.png</pre>
+      </div>
+      <figcaption>04 — 下書き一覧。ここに 1 本だけ増えていれば正常です（重複していたら再開処理の異常）。</figcaption>
+    </figure>
+
+    <div class="box">
+      <span class="head">スクリーンショットの入れ方</span>
+      <p><code class="os-mac">~/.agents/skills/write-note-drafts/docs/shots/</code><code class="os-win">%USERPROFILE%\.agents\skills\write-note-drafts\docs\shots\</code> に上記のファイル名で PNG を置いて、このページを再読み込みしてください。点線の枠が実際の画像に差し替わります。HTML を編集する必要はありません。</p>
+    </div>
+  </section>
+
+  <section id="brain">
+    <h2><span class="num">08</span>Brain 記事への対応 <span class="chip dev">現行版は手動運用</span></h2>
+    <p><strong>結論：Brain 向けの記事と画像は作れますが、Brain への入力と保存は人が行います。</strong>実機でタイトル・本文・メイン画像の入力先、推奨画像サイズ、販売設定画面までの動線を確認しました。金額と公開範囲に関わる画面は自動操作の対象にしません。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>項目</th><th>note</th><th>Brain（現行版）</th></tr></thead>
+        <tbody>
+          <tr><td>到達点</td><td>未公開下書きの保存・再読</td><td>ローカルの記事・画像＋手動入力</td></tr>
+          <tr><td>アイキャッチ</td><td>1280×670 に正規化</td><td>1280×670（実機表示で確認）</td></tr>
+          <tr><td>有料ライン</td><td>扱わない</td><td>販売設定画面で人が決める</td></tr>
+          <tr><td>価格</td><td>扱わない</td><td>人が毎回確認・入力</td></tr>
+          <tr><td>紹介（アフィリエイト）率</td><td>—</td><td>人が毎回確認・入力</td></tr>
+          <tr><td>公開／販売開始</td><td>行わない</td><td>行わない</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ul class="flow">
+      <li>Skill：調査・執筆</li>
+      <li>Skill：画像作成</li>
+      <li class="brainy">人：Brain へ転記</li>
+      <li class="brainy">人：販売設定</li>
+      <li class="brainy">人：下書き保存を確認</li>
+    </ul>
+
+    <h3>実機で確認できたこと</h3>
+    <ul class="plain">
+      <li>タイトル欄、本文欄、メイン画像の入力先を画面上の意味から一意に区別できます。</li>
+      <li>メイン画像の推奨サイズは <strong>横1280px × 縦670px</strong> と画面に表示されています。</li>
+      <li><strong>下書き保存</strong>、<strong>プレビュー</strong>、<strong>販売設定に進む</strong>の各ボタンを区別できます。</li>
+      <li>販売設定画面へ遷移できることまで確認しました。価格・紹介率・有料ラインの中身は金銭設定のため確認対象から外しています。</li>
+    </ul>
+
+    <figure class="shot">
+      <img src="shots/05-brain-editor.png" alt="Brain の記事作成画面">
+      <div class="todo">
+        <span class="t-label">実画面の撮影ガイド（任意）</span>
+        <span class="t-what">05 — Brain の記事作成画面</span>
+        <p class="t-how">「記事を書く」から入った編集画面を撮ってください。タイトル・アイキャッチ・本文の 3 領域が入るようにします。</p>
+        <pre class="os-mac">screencapture -i ~/.agents/skills/write-note-drafts/docs/shots/05-brain-editor.png</pre>
+        <pre class="os-win">Win + Shift + S → %USERPROFILE%\.agents\skills\write-note-drafts\docs\shots\05-brain-editor.png</pre>
+      </div>
+      <figcaption>05 — 実機の Brain 記事作成画面。タイトル、本文、メイン画像、下書き保存、販売設定への動線を確認しました。メイン画像の推奨サイズは 1280×670 です。</figcaption>
+    </figure>
+
+    <div class="box brainy">
+      <span class="head">ここから先は人が操作</span>
+      <p>販売設定画面では、利用者本人が価格・紹介率・有料ラインを確認して入力します。Skill は過去記事や保存設定から金額を推測せず、販売開始も押しません。</p>
+    </div>
+
+    <h3>規約と、そこから決めた制約</h3>
+    <p><a href="https://brain-market.notion.site/197e3ca353d780148c2fe27a29ef45bb">Brain の販売者用・購入者用利用規約</a>について、前回取得できた<strong>2026-06-09 版</strong>の全文を確認した範囲では、自動化ツール・ボット・スクレイピング・クローラ・プログラムによるアクセス・API を直接扱う条項は見つかっていません。これは<strong>自動操作の許可を意味しません</strong>。明示的な許可も禁止も確認できない一方、禁止事項には次の包括条項があります。</p>
+    <pre class="plainblock">本サービス又はサーバーに対する妨害と当社が判断する行為
+その他当社が不適切と判断する行為</pre>
+    <p>どちらも運営の裁量で判定され、該当と判断されれば提供停止・登録抹消・データ削除が行われます。販売者アカウントは<strong>本人確認書類と決済手段に紐づく</strong>ため、停止された場合の影響が note とは比べものになりません。規約は「ID を利用して行われた行為の責任は ID 保有者に帰属する」とも定めています。</p>
+
+    <div class="box stop">
+      <span class="head">確認範囲</span>
+      <p>この記載の根拠は、取得して確認した規約の最終更新表記 2026-06-09 版です。規約は改定される可能性があるため、Brain を実際に操作する直前に公式ページの現行版を再確認します。現行版を取得できない実行では Brain へ書き込みません。</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>制約</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td>無人実行</td><td><strong>対象外。</strong>定期実行から Brain へ書き込まない</td></tr>
+          <tr><td>本数</td><td>1 回の実行で 1 本まで。連続投稿・並列処理をしない</td></tr>
+          <tr><td>速度</td><td>人の操作速度を超えない。待機を省いた連続実行をしない</td></tr>
+          <tr><td>ポーリング</td><td>行わない。保存確認と再読検証は最小回数</td></tr>
+          <tr><td>再試行</td><td>自動で繰り返さない。続く場合は停止して報告</td></tr>
+          <tr><td>読み取り範囲</td><td>自分の下書きのみ。他者のアカウント・記事・購入者情報を収集しない</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box brainy">
+      <span class="head">現行版の到達点</span>
+      <p>Brain 用の記事と 1280×670 の画像をローカルに残し、実機で確認した入力先へ人が転記します。販売設定と下書き保存も人が確認します。保存後の再読検証は実施していないため、Skill が<strong>「Brain に保存しました」と報告することはありません。</strong></p>
+    </div>
+  </section>
+
+  <section id="schedule">
+    <h2><span class="num">09</span>定期実行</h2>
+    <p>毎週・毎日、下書きだけを溜めておく運用です。スケジューラ本体は Skill の外（エージェントのスケジュール機能、cron／launchd、タスクスケジューラ、CI）に置き、Skill 側は「呼び出し方」だけを持ちます。</p>
+
+    <h3>設定</h3>
+    <p>ワークスペースの <code>OPERATING_RULES.md</code> に次を書きます。<strong>1 つでも欠けるとエラーになり、定期実行は有効になりません。</strong></p>
+    <pre class="plainblock">- 配信頻度: 毎週
+- 実行時刻: 09:00
+- タイムゾーン: Asia/Tokyo
+- 1回あたりの本数: 1
+- 成果物: ローカル下書き
+- 実行環境: cron/launchd</pre>
+    <p><code>配信頻度: 手動</code> のあいだは無効です。既存のワークスペースにこれらの項目が無い状態は正常で、通常の記事作成には影響しません。</p>
+
+    <h3>プロンプトの生成</h3>
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — schedule-prompt</span></div>
+<pre><span class="c">python3 scripts/manage.py schedule-prompt --workspace ~/.config/write-note-drafts</span>
+<span class="o">{
+  "cadence": "毎週",
+  "fields": { "配信頻度": "毎週", "実行時刻": "09:00", ... },
+  "prompt_path": "/Users/you/.config/write-note-drafts/scheduled-prompt.md",
+  "scheduling": "enabled"
+}</span>
+
+<span class="o"># 設定前はこう返る（エラーではない）</span>
+<span class="o">{ "scheduling": "disabled", "cadence": "手動", "prompt_path": null }</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — schedule-prompt</span></div>
+<pre><span class="c">py -3.11 scripts\manage.py schedule-prompt --workspace "$env:USERPROFILE\.config\write-note-drafts"</span>
+<span class="o">{
+  "cadence": "毎週",
+  "prompt_path": "C:\\Users\\you\\.config\\write-note-drafts\\scheduled-prompt.md",
+  "scheduling": "enabled"
+}</span></pre>
+    </div>
+    <p>スケジューラに登録するのは、生成された <code>scheduled-prompt.md</code> の内容<strong>だけ</strong>です。ワークフローの手順をスケジューラ側に写し取らないでください。写すと、Skill を更新しても定期実行だけ古い手順で走り続けます。</p>
+
+    <h3>登録の手順</h3>
+    <ol class="steps">
+      <li>頻度・タイムゾーン・本数・想定コスト・情報源・成果物を決める。</li>
+      <li>実行環境がワークスペースに読み書きでき、必要ならブラウザに到達できるか確認する。</li>
+      <li><code>schedule-prompt</code> で生成されたプロンプト全文を確認する。</li>
+      <li>スケジューラに登録する。</li>
+      <li>手動で 1 回だけ実行し、<code>runs/&lt;run-id&gt;/schedule-report.md</code> を確認する。</li>
+      <li>どこで管理し、どう止めるかを <code>OPERATING_RULES.md</code> に書き残す。</li>
+    </ol>
+
+    <div class="box stop">
+      <span class="head">無人実行でしないこと</span>
+      <p>公開・予約投稿・販売開始・<strong>価格と紹介率の確定</strong>・有料ライン位置の確定・アカウント切替・購入・権限変更。金額と公開範囲に関わる判断は無人では確定させません。Brain 記事の場合、価格と紹介率は未確定のまま残り、実行レポートに「人の確認待ち」として記録されます。</p>
+    </div>
+
+    <p>止めるときは <code>配信頻度: 手動</code> に戻します。ただし<strong>スケジューラ側の登録は残る</strong>ので、そちらの削除も忘れないでください。</p>
+  </section>
+
+  <section id="hybrid">
+    <h2><span class="num">10</span>ハイブリッド構成</h2>
+    <p>「最後の一手を自力で完了させ、やったことを検証する」骨格に、「記事を商品として運用する」層を必要な分だけ足したものです。すべて 1 リポジトリに入っています。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>機能</th><th>状態</th></tr></thead>
+        <tbody>
+          <tr><td>note へのブラウザ入力</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>保存後の再読検証と <code>cms-receipt.json</code></td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>Doctor／プリフライト／チェックポイント再開</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>文体学習（<code>WRITING_PROFILE.md</code>）</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>ハンドル照合・調査ページの不信任扱い</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>アイキャッチ <code>1280×670</code> 正規化と実ファイル検査</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>定期実行（<code>schedule-prompt</code> ／ scheduler 中立）</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>Brain のハンドル照合と価格・紹介率の確認契約</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>Brain のタイトル・本文・メイン画像の入力先</td><td><span class="chip ok">実機確認済み</span></td></tr>
+          <tr><td>Brain への転記・販売設定・下書き保存</td><td><span class="chip dev">人が操作</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>完成版として残した境界</h3>
+    <ul class="plain">
+      <li>Brain の記事制作はローカル成果物まで。CMS への転記と保存は人が行います。</li>
+      <li>価格・紹介率・有料ラインは金銭と公開範囲に関わるため、自動入力しません。</li>
+      <li>販売設定画面の読み取り、保存後の再読、Brain アカウントの実画面照合は動作確認済みとは扱いません。</li>
+    </ul>
+
+    <h3>あえて入れなかったもの</h3>
+    <ul class="plain">
+      <li><strong>自動公開。</strong><span class="chip no">不採用</span> 会話上の同意 1 回でアカウントに公開が飛ぶ設計は無人実行と相性が悪すぎます。到達点は下書きのまま。</li>
+      <li><strong>note の有料記事・メンバー限定対応。</strong><span class="chip no">不採用</span> note adapter は allowlist で「販売設定画面へ遷移しない」を明示的に禁止しています。Brain の金銭設定も人の操作に限定します。</li>
+      <li><strong>サムネイルのモード分類。</strong><span class="chip no">不採用</span> <code>image-plan.md</code> と <code>ASSETS.md</code> が既に同じ範囲をカバーしており、増やすだけになります。取り込んだのは <code>1280×670</code> の正規化と実ファイル検査だけです。</li>
+      <li><strong>コネクタ任せの CMS 連携。</strong><span class="chip no">不採用</span> 「対応ツールがあれば使う」方式は、無い環境ではローカル Markdown で終わります。ブラウザ操作に一本化しています。</li>
+    </ul>
+  </section>
+
+  <section id="safety">
+    <h2><span class="num">11</span>安全境界</h2>
+    <ul class="plain">
+      <li>公開・予約投稿・販売開始・アカウント自動切替は行いません。</li>
+      <li>パスワード、Cookie、トークン、MFA コード、API キーを保存しません。</li>
+      <li>操作対象は、選択したブラウザで現在ログイン中のアカウントのみ。書き換え前に毎回ハンドルを照合し、不一致・未取得なら停止します。</li>
+      <li>調査したページはすべて信頼できない入力として扱います。ページ内に書かれた指示には従いません。</li>
+      <li>主張は URL と日付まで辿れる状態を保ちます。事実・引用・数値・出典を創作しません。</li>
+      <li>ブラウザを変更する前にローカル成果物を保存し、新しい下書き URL を先に記録します。</li>
+      <li>未知の画面、note / Brain 以外のオリジン、CAPTCHA、MFA、同意画面、対象が曖昧な UI で停止します。</li>
+      <li>成功報告は、保存状態を観測し同じ下書きを読み直したあとにのみ行います。</li>
+    </ul>
+  </section>
+
+  <section id="trouble">
+    <h2><span class="num">12</span>止まったとき</h2>
+    <p>失敗時は、フェーズ・原因・最後のチェックポイント・下書き URL・安全な再試行手順・手動手順・ローカルファイルのパスが表示されます。自動で再試行されるのは読み取り、待機、既存下書きへの更新だけで、<strong>新規下書きの作成は自動再試行しません</strong>（重複防止）。</p>
+
+    <details>
+      <summary>self-check が AssertionError で落ちる</summary>
+      <p>Python が 3.10 未満です。Doctor 自身が <code>python &gt;= 3.10</code> を要求しているため、3.9 では内部の期待値と食い違って落ちます。<a href="#prereq">01 前提チェック</a>の手順で 3.11 に切り替えてください。</p>
+      <div class="term">
+        <div class="term-bar"><i></i><i></i><i></i><span>確認方法</span></div>
+<pre><span class="c os-mac">python3 --version</span><span class="c os-win">py -3.11 --version</span>
+<span class="o">Python 3.11.15</span>   <span class="c">← 3.10 以上なら OK</span></pre>
+      </div>
+    </details>
+
+    <details>
+      <summary>Doctor が blocking_checks に platform を出す</summary>
+      <p>Windows / Linux で <code>--browser safari</code> を指定しています。Safari 経路は macOS 専用です。<code>--browser chrome</code> にしてください。ワークスペースに保存済みのブラウザを変えるには <code>setup</code> モードで育成をやり直します。</p>
+    </details>
+
+    <details>
+      <summary>runtime_checks がずっと pending のまま</summary>
+      <p>正常です。<code>web</code>／画像生成／ブラウザ接続はコマンドラインからは判定できず、エージェントが会話の中で実際に呼び出して確認します。エージェントに「Doctor を実行して」と頼んでください。</p>
+    </details>
+
+    <details>
+      <summary>ブラウザ拡張が接続されていない</summary>
+      <p>Claude Code の場合、拡張が未接続だと <code>Browser extension is not connected</code> が返ります。拡張をインストールのうえ Chrome を再起動し、claude.ai に Claude Code と同じアカウントでログインしてください。Codex は ChatGPT Chrome Plugin、Hermes は <code>/browser connect</code> です。</p>
+    </details>
+
+    <details>
+      <summary>note からログアウトしていた／別アカウントだった</summary>
+      <p>停止して手動ログイン・切り替えを依頼します。切り替え後に再度ハンドルを照合します。Skill 側からアカウントを切り替えることはありません。</p>
+    </details>
+
+    <details>
+      <summary>画像生成が使えない</summary>
+      <p>CMS を触る前に停止し、本文と <code>image-plan.md</code> を完成させた状態で残します。あとから画像だけ足して再開できます。</p>
+    </details>
+
+    <details>
+      <summary>途中で落ちた／同じ記事を作り直したい</summary>
+      <p>保存済みの下書き参照から再開します。<code>new-run</code> の冪等キーが同じ限り、下書きが二重に作られることはありません。<code>status</code> の <code>runs</code> に途中の run が残っています。</p>
+    </details>
+
+    <details>
+      <summary>保存はされたが検証に失敗した（save_unverified）</summary>
+      <p>下書き自体は存在するので、表示された差分箇所を人が確認してください。<code>verified</code> 以外を「完了」と報告することはありません。</p>
+    </details>
+
+    <details>
+      <summary>Windows でシンボリックリンクが作れない</summary>
+      <p><code>New-Item -ItemType SymbolicLink</code> は管理者権限か開発者モードが必要です。<code>cmd /c mklink /J</code>（ジャンクション）ならどちらも不要です。削除は <code>rmdir</code> を使ってください（<code>del</code> だとリンク先の実体を消す恐れがあります）。</p>
+    </details>
+  </section>
+
+  <section id="commands">
+    <h2><span class="num">13</span>コマンド一覧</h2>
+    <p class="os-mac">すべて <code>python3 scripts/manage.py &lt;command&gt; --workspace ~/.config/write-note-drafts</code> の形です。</p>
+    <p class="os-win">すべて <code>py -3.11 scripts\manage.py &lt;command&gt; --workspace "$env:USERPROFILE\.config\write-note-drafts"</code> の形です。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>コマンド</th><th>必須オプション</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td><code>init</code></td><td><code>--workspace</code> <code>--browser chrome|safari</code></td><td>ワークスペース作成</td></tr>
+          <tr><td><code>status</code></td><td><code>--workspace</code></td><td>現在の状態（<code>uninitialized</code>／<code>onboarding</code>／<code>ready</code>）</td></tr>
+          <tr><td><code>doctor</code></td><td><code>--workspace</code>／<code>--browser</code>／<code>--agent codex|claude|hermes</code>／<code>--target note|brain</code></td><td>環境診断。Brain はブラウザ指定と実機での意味的観察が必須</td></tr>
+          <tr><td><code>validate</code></td><td><code>--workspace</code></td><td>設定ファイルの整合性チェック</td></tr>
+          <tr><td><code>ready</code></td><td><code>--workspace</code> <code>--account-handle</code>（<code>--brain-handle</code> 任意）</td><td>育成完了を記録</td></tr>
+          <tr><td><code>verify-account</code></td><td><code>--workspace</code> <code>--observed-handle</code>（<code>--platform note|brain</code>）</td><td>画面上のハンドルと保存値を照合。note と Brain は独立して照合する</td></tr>
+          <tr><td><code>schedule-prompt</code></td><td><code>--workspace</code></td><td>定期実行用の短いプロンプトを生成。<code>配信頻度: 手動</code> なら <code>disabled</code> を返す</td></tr>
+          <tr><td><code>new-run</code></td><td><code>--workspace</code>（<code>--run-id</code> 任意）</td><td>記事 1 本ぶんの作業領域を作る</td></tr>
+          <tr><td><code>checkpoint</code></td><td><code>--workspace</code> <code>--run-id</code> <code>--phase</code> <code>--status</code></td><td>進捗の記録（<code>--draft-ref</code>／<code>--draft-url</code> 任意）</td></tr>
+          <tr><td><code>self-check</code></td><td>—</td><td>本体の自己診断</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>通常はエージェントが必要に応じて呼ぶので、手で叩くのは <code>self-check</code>・<code>status</code>・<code>doctor</code> の 3 つで足ります。</p>
+
+    <h3>更新</h3>
+    <div class="term os-mac">
+      <div class="term-bar"><i></i><i></i><i></i><span>zsh — 更新</span></div>
+<pre><span class="c">cd ~/.agents/skills/write-note-drafts && git pull</span>
+<span class="c">python3 scripts/manage.py self-check</span>
+<span class="o">{ "self_check": "passed" }</span></pre>
+    </div>
+    <div class="term os-win">
+      <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — 更新</span></div>
+<pre><span class="c">cd "$env:USERPROFILE\.agents\skills\write-note-drafts"; git pull</span>
+<span class="c">py -3.11 scripts\manage.py self-check</span>
+<span class="o">{ "self_check": "passed" }</span></pre>
+    </div>
+    <p>ワークスペース（設定と記事）は Skill 本体とは別の場所にあるので、更新しても消えません。</p>
+  </section>
+
+  <footer>
+    <p>Note Draft Pipeline — 導入・運用マニュアル</p>
+    <p>本 Skill は note / Brain の運営各社とは無関係の非公式ツールです。各サービスの利用規約を確認し、自分自身または明示的に運用権限を与えられたアカウントのみを操作してください。</p>
+  </footer>
+
+</article>
+
+<nav class="toc" aria-label="目次">
+  <p class="toc-label">Contents</p>
+  <ol>
+    <li><a href="#outcome">結局、何ができるのか</a></li>
+    <li><a href="#read">00 このマニュアルの読み方</a></li>
+    <li><a href="#prereq">01 前提チェック</a></li>
+    <li><a href="#which-git">02 どの Git を入れるのか</a></li>
+    <li><a href="#install">03 インストール</a></li>
+    <li><a href="#verify">04 動作確認</a></li>
+    <li><a href="#onboarding">05 初回育成</a></li>
+    <li><a href="#write">06 記事を 1 本書かせる</a></li>
+    <li><a href="#note-ui">07 note 画面</a></li>
+    <li><a href="#brain">08 Brain 記事への対応</a></li>
+    <li><a href="#schedule">09 定期実行</a></li>
+    <li><a href="#hybrid">10 ハイブリッド構成</a></li>
+    <li><a href="#safety">11 安全境界</a></li>
+    <li><a href="#trouble">12 止まったとき</a></li>
+    <li><a href="#commands">13 コマンド一覧</a></li>
+  </ol>
+</nav>
+</div>
+
+<script>
+  // OS切替（既定はこのページを開いたOSを推定）
+  var root = document.documentElement;
+  var saved = null;
+  try { saved = localStorage.getItem('ndp-os'); } catch (e) {}
+  var guess = /Win/i.test(navigator.platform || navigator.userAgent) ? 'win' : 'mac';
+  setOS(saved || guess);
+
+  function setOS(os) {
+    root.dataset.os = os;
+    var btns = document.querySelectorAll('.osswitch button');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-pressed', btns[i].dataset.os === os ? 'true' : 'false');
+    }
+    try { localStorage.setItem('ndp-os', os); } catch (e) {}
+  }
+
+  document.querySelector('.osswitch').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (b) setOS(b.dataset.os);
+  });
+
+  // 画像がない任意スロットは、壊れた画像ではなく撮影ガイドとして表示する
+  var shots = document.querySelectorAll('figure.shot img');
+  for (var j = 0; j < shots.length; j++) {
+    (function (img) {
+      img.addEventListener('error', function () { img.closest('figure').classList.add('missing'); });
+      if (img.complete && img.naturalWidth === 0) img.closest('figure').classList.add('missing');
+    })(shots[j]);
+  }
+</script>
+</body>
+</html>
