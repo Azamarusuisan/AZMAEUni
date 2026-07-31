@@ -74,6 +74,20 @@ Generate one thumbnail and at least two distinct body images through the current
 
 Interrupt immediately after checkpointing the first draft URL. Resume from the same run. Pass when exactly one draft exists, existing unexpected content is not overwritten, the saved indicator is observed, and reread verification covers title, headings, links, images, thumbnail, hashtags, and normalized body content. If either save observation or reread fails, the result must be `save_unverified`.
 
+## Windows release gate
+
+GitHub Actions must pass on `windows-latest` with Python 3.10, 3.12, and 3.14,
+PowerShell 7, and Windows PowerShell 5.1. The automated case uses a workspace
+whose path contains Japanese characters and spaces, then runs `init`, `status`,
+`validate`, `self-check`, and `windows-doctor.ps1`.
+
+Before describing a release as live-compatible on Windows, also complete one
+attended Windows 11 Chrome run for each claimed Agent. Pass when the Agent
+runtime Doctor verifies its actual Chrome connector and image capability,
+uploads a local file, creates exactly one note draft, and rereads it. Windows 10,
+ARM64, WSL2, and company-managed devices remain conditional until separately
+recorded. Never infer Windows live compatibility from the CI result alone.
+
 ## No-publish release gate
 
 Inspect the live action trace and final note state for every browser run.

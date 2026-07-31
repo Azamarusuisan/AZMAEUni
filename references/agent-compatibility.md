@@ -52,6 +52,14 @@ The Doctor must verify the capability in the current session. Installation of th
 
 Claude in Chrome must be enabled for the current Claude Code session and allowed to access note. Hermes Chrome must use the browser session reported by `/browser status`; the user logs into note manually in that session. Hermes Safari requires `hermes computer-use status` to pass.
 
+## Windows hosts
+
+Read [windows support and recovery](windows.md) before onboarding on a Windows host.
+Native Windows uses Google Chrome only and invokes manager commands through
+`scripts/manage.ps1`. Run `scripts/windows-doctor.ps1` first; its local checks
+do not replace the live Agent runtime checks. WSL2 follows the Linux flow and
+must not share a run or workspace with the Native Windows flow.
+
 ## Portable rules
 
 - `SKILL.md`, references, templates, and `scripts/manage.py` are shared unchanged.

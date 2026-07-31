@@ -25,3 +25,58 @@ jobs:
       - run: python -m pip install --requirement requirements-validation.txt
       - run: python scripts/validate_skill.py .
       - run: python scripts/manage.py self-check
+
+  windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12", "3.14"]
+    defaults:
+      run:
+        working-directory: write-note-drafts
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: write-note-drafts
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: write-note-drafts/requirements-validation.txt
+      - name: Validate package and Python workflow
+        shell: pwsh
+        run: |
+          $env:WRITE_NOTE_DRAFTS_PYTHON = (Get-Command python.exe).Source
+          python -m pip install --requirement requirements-validation.txt
+          python scripts/validate_skill.py .
+          & .\scripts\manage.ps1 self-check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise Unicode and spaced Windows paths
+        shell: pwsh
+        run: |
+          $env:WRITE_NOTE_DRAFTS_PYTHON = (Get-Command python.exe).Source
+          $workspace = Join-Path $env:RUNNER_TEMP "購入者 環境\記事ワークスペース"
+          & .\scripts\manage.ps1 init --browser chrome --workspace $workspace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\scripts\manage.ps1 status --workspace $workspace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .\scripts\manage.ps1 validate --workspace $workspace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run native Windows Doctor
+        shell: pwsh
+        run: |
+          $env:WRITE_NOTE_DRAFTS_PYTHON = (Get-Command python.exe).Source
+          $workspace = Join-Path $env:RUNNER_TEMP "購入者 環境\Doctor"
+          & .\scripts\windows-doctor.ps1 -Agent codex -Target note -Workspace $workspace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Windows PowerShell 5.1 compatibility
+        if: matrix.python == '3.12'
+        shell: powershell
+        run: |
+          $env:WRITE_NOTE_DRAFTS_PYTHON = (Get-Command python.exe).Source
+          & .\scripts\manage.ps1 --print-runtime
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $workspace = Join-Path $env:RUNNER_TEMP "Windows PowerShell 5.1\Doctor"
+          & .\scripts\windows-doctor.ps1 -Agent codex -Target note -Workspace $workspace
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

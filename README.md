@@ -31,6 +31,8 @@ GitHubリポジトリ:
 - 公開、予約投稿、販売設定、アカウント自動切替は行いません。
 - 最終地点は「下書き保存と再読検証」です。公開ボタンは操作しません。
 - ブラウザや画像生成能力が利用できない場合、noteを変更する前に安全停止します。
+- Windowsは**Google Chrome経路だけ**を使用し、Safariへfallbackしません。
+- Windows購入者は記事作成前に`windows-doctor.ps1`を実行します。ローカル診断で判定できないChrome接続・画像生成は、Agent会話内で実際に呼び出して確認します。
 
 ## インストール後にできること
 
@@ -75,6 +77,20 @@ GitHubリポジトリ:
 
 本リポジトリはブラウザ拡張、画像プロバイダー、macOS権限、各AgentのToolをインストールしません。実行前のDoctorが現在のセッションで利用可能か確認します。
 
+### Windows
+
+| 環境 | 対応 |
+|---|---|
+| Windows 11（最新更新） | 推奨。Native PowerShell + Google Chrome |
+| Windows 10 build 17763以降 | best effort。完全更新が必要 |
+| PowerShell | Windows PowerShell 5.1／PowerShell 7 |
+| Python | 3.10〜3.14を自動検出 |
+| WSL2 | Linux手順として対応。Native Windowsとパスを混ぜない |
+| WSL1 | 非対応 |
+| ARM64／会社管理PC | Agent・Chrome・Policyを実機Doctorで確認 |
+
+詳しい対応表とエラー別の直し方は[Windows support and recovery](references/windows.md)を参照してください。
+
 ## インストール
 
 ### 1. GitHubへ認証する
@@ -97,6 +113,20 @@ Codex、Claude Code、Hermes Agentで同じcheckoutを共有できます。
 mkdir -p "$HOME/.agents/skills"
 gh repo clone Azamarusuisan/AZMAEUni "$HOME/.agents/skills/write-note-drafts"
 ```
+
+Windows PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.agents\skills" | Out-Null
+gh repo clone Azamarusuisan/AZMAEUni "$env:USERPROFILE\.agents\skills\write-note-drafts"
+Set-Location "$env:USERPROFILE\.agents\skills\write-note-drafts"
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\windows-doctor.ps1 -Agent codex -Target note
+```
+
+Windowsでは`py -3.11`のように版を固定せず、以後の管理コマンドを
+`.\scripts\manage.ps1 <command>`で実行します。利用可能なPython 3.10以上を
+自動で選び、Microsoft Storeの見せかけの`python.exe`は除外します。
 
 すでに同名のパスが存在する場合は、上書きせず内容を確認してください。
 
@@ -125,6 +155,15 @@ ln -s "$HOME/.agents/skills/write-note-drafts" \
 ```
 
 既存のファイルやディレクトリへ `ln -s` を実行しないでください。シンボリックリンクを利用できない環境では、同じreleaseを `~/.claude/skills/write-note-drafts` へcloneまたはcopyします。
+
+Windowsでは管理者権限が不要なJunctionを使います。
+
+```powershell
+$source = "$env:USERPROFILE\.agents\skills\write-note-drafts"
+$target = "$env:USERPROFILE\.claude\skills\write-note-drafts"
+New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+New-Item -ItemType Junction -Path $target -Target $source
+```
 
 呼び出し例:
 
@@ -469,6 +508,13 @@ Skill本体とユーザー固有データを分離します。
 ~/.config/write-note-drafts/          # Gitへ入れないユーザー専用データ
 ```
 
+Windows Nativeでは次の場所です。
+
+```text
+%USERPROFILE%\.agents\skills\write-note-drafts\
+%USERPROFILE%\.config\write-note-drafts\
+```
+
 ワークスペースはSkill checkout内へ作成できません。非Windows環境では、ディレクトリを `0700`、ファイルを `0600` に設定します。
 
 標準ワークスペース:
@@ -502,6 +548,12 @@ Skill本体とユーザー固有データを分離します。
 
 ```bash
 export NOTE_DRAFT_PIPELINE_HOME="/absolute/private/path"
+```
+
+Windows PowerShell:
+
+```powershell
+$env:NOTE_DRAFT_PIPELINE_HOME = "C:\absolute\private\path"
 ```
 
 ワークスペースには絶対パスを指定し、Skill checkout内には作成できません。素材参照がワークスペース外へ抜けるシンボリックリンクは拒否されます。
@@ -539,6 +591,19 @@ runs/<run-id>/
 ## 管理コマンド
 
 通常はAgentが実行するため、利用者が直接操作する必要はありません。
+
+以下の`bash`例はmacOS／Linux用です。Windows NativeではPythonを直接指定せず、
+同じサブコマンドとoptionを`manage.ps1`へ渡します。
+
+```powershell
+$NoteSkillDir = "$env:USERPROFILE\.agents\skills\write-note-drafts"
+& "$NoteSkillDir\scripts\windows-doctor.ps1" -Agent codex -Target note
+& "$NoteSkillDir\scripts\manage.ps1" status
+& "$NoteSkillDir\scripts\manage.ps1" doctor --agent codex --browser chrome
+```
+
+Windowsで問題が出たら、個別コマンドを試し続ける前に
+[Windows support and recovery](references/windows.md)のError mapを使います。
 
 ```bash
 NOTE_SKILL_DIR="$HOME/.agents/skills/write-note-drafts"
@@ -614,6 +679,7 @@ ChromeとSafari、または確認済みnote handleを変更する場合は、set
 ### Skillが認識されない
 
 - clone先が `~/.agents/skills/write-note-drafts` か確認する
+- Windowsは `%USERPROFILE%\.agents\skills\write-note-drafts` か確認する
 - ディレクトリ直下に `SKILL.md` があるか確認する
 - Claude Codeでは `~/.claude/skills/write-note-drafts` のlinkを確認する
 - Hermesでは `skills.external_dirs` が絶対パスか確認する
@@ -809,6 +875,7 @@ Proprietary Licenseです。正規取得者は自身の個人利用または組�
 
 - [Architecture](references/architecture.md)
 - [Agent compatibility](references/agent-compatibility.md)
+- [Windows support and recovery](references/windows.md)
 - [Configuration and artifact contracts](references/configuration.md)
 - [Workflows](references/workflows.md)
 - [Chrome provider](references/browser-chrome.md)

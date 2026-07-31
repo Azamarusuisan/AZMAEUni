@@ -20,6 +20,7 @@ Create a personalized “note generator” on first use, then produce evidence-b
 - Save all local artifacts before browser mutation. Checkpoint a new draft URL before filling it.
 - Stop on an unknown page, non-note origin, CAPTCHA, MFA, consent screen, or an ambiguous UI target.
 - Report success only after observing the saved state and rereading the same draft.
+- On native Windows, read `references/windows.md`, run `scripts/windows-doctor.ps1` before onboarding, use `scripts/manage.ps1` for manager commands, and use Chrome only. On WSL2 use the Linux flow and never mix Native Windows and WSL paths in one run.
 
 ## Resolve the workspace
 
@@ -212,4 +213,5 @@ Do not claim unsupported browser control. If Safari Computer Use or the Chrome c
 - [references/cms-brain.md](references/cms-brain.md): Brain adapter — price, referral rate, and paywall placement.
 - [references/scheduling.md](references/scheduling.md): recurring unattended runs and their limits.
 - [references/agent-compatibility.md](references/agent-compatibility.md): Codex, Claude Code, and Hermes installation and capability mapping.
+- [references/windows.md](references/windows.md): native Windows, WSL2, PowerShell, CI, and error recovery.
 - [README.md](README.md): installation, setup, usage, update, and limitations.
