@@ -35,6 +35,19 @@ SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")
 ACCOUNT_HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{3,64}$")
 ALLOWED_BROWSERS = {"chrome", "safari"}
 ALLOWED_AGENTS = {"codex", "claude", "hermes"}
+PLATFORM_HANDLE_KEYS = {
+    "note": "expected_account_handle",
+    "brain": "expected_brain_handle",
+}
+MANUAL_CADENCE = "手動"
+SCHEDULE_FIELDS = (
+    "配信頻度",
+    "実行時刻",
+    "タイムゾーン",
+    "1回あたりの本数",
+    "成果物",
+    "実行環境",
+)
 ALLOWED_AUTOMATION_MODES = {"guided", "autopilot"}
 ALLOWED_OUTLINE_CONFIRMATIONS = {"毎回", "依頼時のみ"}
 REQUIRED_MARKDOWN = (
@@ -357,6 +370,7 @@ def init_workspace(
             "updated_at": timestamp,
             "status": "onboarding",
             "expected_account_handle": None,
+            "expected_brain_handle": None,
         }
         write_json(state_path(workspace), existing)
     secure_workspace_permissions(workspace)
@@ -526,7 +540,9 @@ def validate_onboarding(workspace: Path, state: dict, account_handle: str) -> No
         raise ManageError("enabled thumbnails require サムネイル文字入れ: あり")
 
 
-def mark_ready(workspace: Path, account_handle: str) -> dict:
+def mark_ready(
+    workspace: Path, account_handle: str, brain_handle: str | None = None
+) -> dict:
     validation = validate_workspace(workspace)
     state = load_workspace(workspace)
     account_handle = normalize_account_handle(account_handle)
@@ -540,24 +556,83 @@ def mark_ready(workspace: Path, account_handle: str) -> dict:
             "updated_at": timestamp,
         }
     )
+    if brain_handle is not None:
+        state["expected_brain_handle"] = normalize_account_handle(brain_handle)
+    else:
+        state.setdefault("expected_brain_handle", None)
     write_json(state_path(workspace), state)
     return {
         **validation,
         "status": "ready",
         "expected_account_handle": state["expected_account_handle"],
+        "expected_brain_handle": state["expected_brain_handle"],
     }
 
 
-def verify_account(workspace: Path, observed_handle: str) -> dict:
+def verify_account(
+    workspace: Path, observed_handle: str, platform: str = "note"
+) -> dict:
+    key = PLATFORM_HANDLE_KEYS.get(platform)
+    if key is None:
+        raise ManageError(f"unsupported platform: {platform}")
     state = load_workspace(workspace)
-    expected = state.get("expected_account_handle")
+    expected = state.get(key)
     if state["status"] != "ready" or not expected:
-        raise ManageError("workspace has no confirmed account handle")
+        raise ManageError(f"workspace has no confirmed {platform} account handle")
     if observed_handle != expected:
         raise ManageError(
-            f"account mismatch: expected {expected!r}, observed {observed_handle!r}"
+            f"{platform} account mismatch: "
+            f"expected {expected!r}, observed {observed_handle!r}"
         )
-    return {"account_match": True, "expected_account_handle": expected}
+    return {"account_match": True, "platform": platform, key: expected}
+
+
+def schedule_prompt(workspace: Path) -> dict:
+    """Emit a scheduler-safe prompt that points at this Skill and the saved profile."""
+    state = load_workspace(workspace)
+    if state["status"] != "ready":
+        raise ManageError("workspace is not ready; run ready --account-handle first")
+
+    rules = markdown_fields(workspace / "OPERATING_RULES.md")
+    cadence = rules.get("配信頻度", MANUAL_CADENCE)
+    if cadence == MANUAL_CADENCE:
+        return {
+            "scheduling": "disabled",
+            "cadence": cadence,
+            "prompt_path": None,
+            "detail": f"配信頻度 is {MANUAL_CADENCE}; no schedule is generated",
+        }
+
+    missing = [field for field in SCHEDULE_FIELDS if not rules.get(field)]
+    if missing:
+        raise ManageError(
+            "OPERATING_RULES.md is missing scheduling fields: " + ", ".join(missing)
+        )
+
+    settings = "\n".join(f"{field}: {rules[field]}" for field in SCHEDULE_FIELDS)
+    prompt = (
+        "Use the write-note-drafts Skill.\n\n"
+        f"workspace: {workspace}\n\n"
+        "Follow the saved profile in that workspace and references/scheduling.md.\n"
+        "Create drafts only. Do not publish, schedule a publication, start a sale, "
+        "confirm a price, confirm a referral rate, or switch accounts.\n"
+        "Leave every money-related field unresolved and record it as awaiting human "
+        "confirmation in the run report.\n\n"
+        "Saved cadence settings:\n"
+        f"{settings}\n"
+    )
+    prompt_path = workspace / "scheduled-prompt.md"
+    prompt_path.write_text(prompt, encoding="utf-8")
+    try:
+        prompt_path.chmod(0o600)
+    except OSError:
+        pass
+    return {
+        "scheduling": "enabled",
+        "cadence": cadence,
+        "prompt_path": str(prompt_path),
+        "fields": {field: rules[field] for field in SCHEDULE_FIELDS},
+    }
 
 
 def new_run(workspace: Path, requested_run_id: str | None) -> dict:
@@ -835,6 +910,7 @@ def workspace_status(workspace: Path) -> dict:
         "status": state["status"],
         "browser": state["browser"],
         "expected_account_handle": state.get("expected_account_handle"),
+        "expected_brain_handle": state.get("expected_brain_handle"),
         "runs": runs,
     }
 
@@ -971,6 +1047,59 @@ def self_check() -> dict:
             pass
         else:
             raise AssertionError("account mismatch was accepted")
+
+        # A note handle never satisfies a Brain check, even when the strings match.
+        try:
+            verify_account(workspace, "example_user", "brain")
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("unconfirmed brain handle was accepted")
+        assert mark_ready(workspace, "@example_user", "@example_brain")[
+            "expected_brain_handle"
+        ] == "example_brain"
+        assert verify_account(workspace, "example_brain", "brain")["account_match"]
+        try:
+            verify_account(workspace, "example_brain", "note")
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("brain handle was accepted as a note handle")
+        try:
+            verify_account(workspace, "example_user", "unknown")
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("unknown platform was accepted")
+
+        # Scheduling stays off until every cadence field is present.
+        assert schedule_prompt(workspace)["scheduling"] == "disabled"
+        rules_path = workspace / "OPERATING_RULES.md"
+        rules_path.write_text(
+            rules_path.read_text(encoding="utf-8") + "\n- 配信頻度: 毎週\n",
+            encoding="utf-8",
+        )
+        try:
+            schedule_prompt(workspace)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("incomplete cadence settings were accepted")
+        rules_path.write_text(
+            rules_path.read_text(encoding="utf-8")
+            + "- 実行時刻: 09:00\n"
+            + "- タイムゾーン: Asia/Tokyo\n"
+            + "- 1回あたりの本数: 1\n"
+            + "- 成果物: ローカル下書き\n"
+            + "- 実行環境: cron/launchd\n",
+            encoding="utf-8",
+        )
+        scheduled = schedule_prompt(workspace)
+        assert scheduled["scheduling"] == "enabled"
+        prompt_text = Path(scheduled["prompt_path"]).read_text(encoding="utf-8")
+        assert "Do not publish" in prompt_text
+        assert "毎週" in prompt_text
+
         run = new_run(workspace, "self-check")
         run_dir = Path(run["run_dir"])
         assert (run_dir / "images").is_dir()
@@ -1175,10 +1304,16 @@ def build_parser() -> argparse.ArgumentParser:
     ready_parser = commands.add_parser("ready")
     add_workspace_option(ready_parser)
     ready_parser.add_argument("--account-handle", required=True)
+    ready_parser.add_argument("--brain-handle")
 
     verify_account_parser = commands.add_parser("verify-account")
     add_workspace_option(verify_account_parser)
     verify_account_parser.add_argument("--observed-handle", required=True)
+    verify_account_parser.add_argument(
+        "--platform", choices=sorted(PLATFORM_HANDLE_KEYS), default="note"
+    )
+
+    add_workspace_option(commands.add_parser("schedule-prompt"))
 
     new_run_parser = commands.add_parser("new-run")
     add_workspace_option(new_run_parser)
@@ -1210,9 +1345,13 @@ def main(argv: list[str] | None = None) -> int:
             elif args.command == "status":
                 result = workspace_status(workspace)
             elif args.command == "ready":
-                result = mark_ready(workspace, args.account_handle)
+                result = mark_ready(workspace, args.account_handle, args.brain_handle)
             elif args.command == "verify-account":
-                result = verify_account(workspace, args.observed_handle)
+                result = verify_account(
+                    workspace, args.observed_handle, args.platform
+                )
+            elif args.command == "schedule-prompt":
+                result = schedule_prompt(workspace)
             elif args.command == "new-run":
                 result = new_run(workspace, args.run_id)
             elif args.command == "checkpoint":

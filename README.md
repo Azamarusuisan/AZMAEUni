@@ -47,6 +47,9 @@ GitHubリポジトリ:
 | 下書き保存 | 公開せず、同じ下書きを再読して保存結果を確認 |
 | 再開 | 保存済みDraftRefを使い、重複下書きを作らず途中から再開 |
 | エラー報告 | 失敗箇所、原因、再試行方法、手動操作方法、ローカル成果物を表示 |
+| アイキャッチ正規化 | noteサムネイルを `1280x670` へ正規化し、寸法・文字・コントラストを実ファイルで検査 |
+| 定期実行 | cadenceを保存し、scheduler中立の短いpromptを生成。無人実行は下書きまで |
+| Brain記事（開発中） | 有料ライン・価格・紹介率を毎回確認。下書き保存で停止し、販売開始はしない |
 
 ## 対応環境
 
@@ -809,4 +812,6 @@ Proprietary Licenseです。正規取得者は自身の個人利用または組�
 - [Chrome provider](references/browser-chrome.md)
 - [Safari provider](references/browser-safari.md)
 - [note draft adapter](references/cms-note.md)
+- [Brain draft adapter](references/cms-brain.md)
+- [Scheduling](references/scheduling.md)
 - [Acceptance tests](references/acceptance-tests.md)
