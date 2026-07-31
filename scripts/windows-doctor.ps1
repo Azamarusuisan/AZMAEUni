@@ -232,7 +232,7 @@ $pythonDoctor = $null
 if ($null -ne $runtime) {
     try {
         $doctorOutput = & (Join-Path $PSScriptRoot "manage.ps1") `
-            doctor --browser chrome --agent $Agent --target $Target --workspace $workspaceFullPath 2>&1
+            doctor --browser chrome --agent $Agent --workspace $workspaceFullPath 2>&1
         if ($LASTEXITCODE -eq 0) {
             $pythonDoctor = ($doctorOutput -join "`n") | ConvertFrom-Json
             if (@($pythonDoctor.blocking_checks).Count -eq 0) {
