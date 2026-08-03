@@ -17,6 +17,8 @@
 
 このadapterはnoteの未公開下書きだけを作成、更新、保存、再読する。公開、予約投稿、販売設定、公開確認、アカウント切替は責務に含めない。
 
+無料記事と有料記事の本文生成は共通の [paid-articles.md](paid-articles.md) が担当する。有料記事では無料部分、有料部分、価格案、有料ライン案までローカルに完成させられる。ただし、このadapterは販売設定画面へ遷移せず、価格や有料ラインをnoteへ設定しない。記事が完成していることと、note上で販売可能になっていることを混同しない。
+
 browser providerは設定に従い、Chromeでは[browser-chrome.md](browser-chrome.md)、Safariでは[browser-safari.md](browser-safari.md)を読む。
 
 ## 外部変更前の条件

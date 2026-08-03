@@ -49,6 +49,7 @@ python3 <skill-directory>/scripts/manage.py schedule-prompt --workspace <workspa
 
 - 記事テーマの候補
 - 調査結果の記録（`research.jsonl`）
+- 無料または有料の記事本文。有料の場合は無料部分、有料部分、価格案と `paid-plan.md`
 - 構成（`outline.md`）
 - ローカル記事（`article.md`）と画像
 - CMSの未公開下書き
@@ -66,7 +67,7 @@ CMS下書きまで進めるのは**note経路だけ**とする。実行環境が
 - メッセージ送信、購入、権限変更
 - preview用URLや認証情報のローカル外への出力
 
-金額と公開範囲に関わる判断は無人実行では確定しない。Brain記事を扱う場合、価格・紹介率・有料ライン位置は未確定のまま残し、実行レポートへ「人の確認待ち」として記録する。詳細は [cms-brain.md](cms-brain.md) を読む。
+金額と公開範囲に関わる判断は無人実行では確定しない。有料記事の本文と販売案はローカルに完成させるが、価格・紹介率・有料ライン位置は未確定のまま残し、CMSを変更せず、実行レポートへ「人の確認待ち」として記録する。詳細は [paid-articles.md](paid-articles.md) と [cms-brain.md](cms-brain.md) を読む。
 
 ## 登録手順
 

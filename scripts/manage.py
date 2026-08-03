@@ -14,7 +14,7 @@ import struct
 import sys
 import tempfile
 import zlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path, PureWindowsPath
 from urllib.parse import unquote, urlsplit, urlunsplit
 
@@ -26,6 +26,7 @@ DEFAULT_WORKSPACE = Path(
 ).expanduser()
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 SCHEMA_VERSION = 1
+BRIEF_SCHEMA_VERSION = 2
 IMAGE_LINK_RE = re.compile(
     r'(?<!\\)!\[[^\]]*]\(\s*(?P<target><[^>]+>|[^)\s]+)'
     r'(?:\s+(?:"[^"]*"|\'[^\']*\'))?\s*\)'
@@ -54,6 +55,15 @@ SCHEDULE_FIELDS = (
 )
 ALLOWED_AUTOMATION_MODES = {"guided", "autopilot"}
 ALLOWED_OUTLINE_CONFIRMATIONS = {"毎回", "依頼時のみ"}
+ALLOWED_ACCESS_MODELS = {"free", "paid"}
+ALLOWED_EVIDENCE_ROLES = {
+    "primary",
+    "analysis",
+    "discovery",
+    "experience",
+    "counterpoint",
+}
+ALLOWED_SOURCE_ACCESS_STATUSES = {"read", "inaccessible", "excluded"}
 REQUIRED_MARKDOWN = (
     "NOTE_GENERATOR.md",
     "PROFILE.md",
@@ -847,6 +857,190 @@ def validate_source_url(value: object) -> str:
     return raw_url
 
 
+def _require_nonempty_string_list(value: object, field: str) -> None:
+    if not isinstance(value, list) or not value:
+        raise ManageError(f"brief.json {field} must be a non-empty list")
+    if any(not isinstance(item, str) or not item.strip() for item in value):
+        raise ManageError(f"brief.json {field} must contain non-empty strings")
+
+
+def _validate_optional_timestamp(value: object, field: str) -> datetime | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ManageError(f"brief.json {field} must be an ISO timestamp or null")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ManageError(
+            f"brief.json {field} must be an ISO timestamp or null"
+        ) from exc
+    if parsed.tzinfo is None:
+        raise ManageError(f"brief.json {field} must include a timezone")
+    return parsed
+
+
+def validate_access_plan(brief: dict) -> dict:
+    schema_version = brief.get("schema_version", 1)
+    if schema_version not in {1, BRIEF_SCHEMA_VERSION}:
+        raise ManageError("brief.json has an unsupported schema_version")
+    access = brief.get("access")
+    if not isinstance(access, dict):
+        if schema_version == 1 and access is None:
+            return {"model": "free", "legacy_default": True}
+        raise ManageError("brief.json access must be an object")
+    model = access.get("model")
+    if model not in ALLOWED_ACCESS_MODELS:
+        raise ManageError("brief.json access.model must resolve to free or paid")
+    if model == "free":
+        return access
+
+    for field in ("purchase_promise", "paywall_after"):
+        value = access.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ManageError(f"brief.json access.{field} is required for paid articles")
+    _require_nonempty_string_list(
+        access.get("free_preview_delivers"), "access.free_preview_delivers"
+    )
+    _require_nonempty_string_list(
+        access.get("paid_section_delivers"), "access.paid_section_delivers"
+    )
+    price = access.get("price")
+    if not isinstance(price, dict):
+        raise ManageError("brief.json access.price must be an object")
+    currency = price.get("currency")
+    proposal = price.get("proposal")
+    rationale = price.get("rationale")
+    if not isinstance(currency, str) or not re.fullmatch(r"[A-Z]{3}", currency):
+        raise ManageError("brief.json access.price.currency must be an ISO currency code")
+    if not isinstance(proposal, int) or isinstance(proposal, bool) or proposal <= 0:
+        raise ManageError("brief.json access.price.proposal must be a positive integer")
+    if not isinstance(rationale, str) or not rationale.strip():
+        raise ManageError("brief.json access.price.rationale is required")
+    _validate_optional_timestamp(
+        access.get("paywall_confirmed_at"), "access.paywall_confirmed_at"
+    )
+    _validate_optional_timestamp(price.get("confirmed_at"), "access.price.confirmed_at")
+    referral = access.get("referral_rate")
+    if referral is not None:
+        if not isinstance(referral, dict):
+            raise ManageError("brief.json access.referral_rate must be an object")
+        percentage = referral.get("proposal_percent")
+        if percentage is not None and (
+            not isinstance(percentage, int)
+            or isinstance(percentage, bool)
+            or not 0 <= percentage <= 100
+        ):
+            raise ManageError(
+                "brief.json access.referral_rate.proposal_percent must be 0-100 or null"
+            )
+        referral_confirmation = referral.get("confirmed_at")
+        _validate_optional_timestamp(
+            referral_confirmation, "access.referral_rate.confirmed_at"
+        )
+        if percentage is None and referral_confirmation is not None:
+            raise ManageError(
+                "brief.json cannot confirm a referral rate without a proposal"
+            )
+    return access
+
+
+def require_paid_commercial_confirmation(brief: dict, state: dict) -> None:
+    access = validate_access_plan(brief)
+    if access["model"] != "paid":
+        return
+    if brief.get("automation_mode") != "guided":
+        raise ManageError("paid CMS staging requires an attended guided run")
+    price = access["price"]
+    if not price.get("confirmed_at"):
+        raise ManageError("paid CMS staging requires price confirmation for this run")
+    if not access.get("paywall_confirmed_at"):
+        raise ManageError("paid CMS staging requires paywall confirmation for this run")
+    referral = access.get("referral_rate")
+    if (
+        isinstance(referral, dict)
+        and referral.get("proposal_percent") is not None
+        and not referral.get("confirmed_at")
+    ):
+        raise ManageError("paid CMS staging requires referral-rate confirmation for this run")
+
+    created_at = _validate_optional_timestamp(state.get("created_at"), "state.created_at")
+    confirmations = [
+        ("price", price.get("confirmed_at")),
+        ("paywall", access.get("paywall_confirmed_at")),
+    ]
+    if isinstance(referral, dict) and referral.get("proposal_percent") is not None:
+        confirmations.append(("referral rate", referral.get("confirmed_at")))
+    now = datetime.now(timezone.utc) + timedelta(minutes=5)
+    for label, value in confirmations:
+        confirmed_at = _validate_optional_timestamp(value, f"access.{label}.confirmed_at")
+        if created_at is None or confirmed_at is None or confirmed_at < created_at:
+            raise ManageError(
+                f"paid CMS staging requires current-run {label} confirmation"
+            )
+        if confirmed_at > now:
+            raise ManageError(f"paid CMS staging rejects future {label} confirmation")
+
+
+def validate_research_records(run_dir: Path, brief: dict) -> None:
+    path = run_dir / "research.jsonl"
+    if not path.is_file():
+        raise ManageError("missing research.jsonl")
+    strict = brief.get("schema_version") == BRIEF_SCHEMA_VERSION
+    seen_ids: set[str] = set()
+    record_count = 0
+    for line_number, raw_line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        if not raw_line.strip():
+            continue
+        try:
+            record = json.loads(raw_line)
+        except json.JSONDecodeError as exc:
+            raise ManageError(
+                f"research.jsonl line {line_number} is invalid JSON"
+            ) from exc
+        if not isinstance(record, dict):
+            raise ManageError(f"research.jsonl line {line_number} must be an object")
+        record_count += 1
+        source_id = record.get("source_id")
+        if not isinstance(source_id, str) or not SAFE_ID_RE.fullmatch(source_id):
+            raise ManageError(
+                f"research.jsonl line {line_number} has an invalid source_id"
+            )
+        if source_id in seen_ids:
+            raise ManageError(f"research.jsonl has duplicate source_id: {source_id}")
+        seen_ids.add(source_id)
+        validate_source_url(record.get("url"))
+        if not strict:
+            continue
+        for field in ("platform", "source_type", "research_question", "accessed_at"):
+            value = record.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise ManageError(
+                    f"research.jsonl line {line_number} is missing {field}"
+                )
+        role = record.get("evidence_role")
+        if role not in ALLOWED_EVIDENCE_ROLES:
+            raise ManageError(
+                f"research.jsonl line {line_number} has an invalid evidence_role"
+            )
+        access_status = record.get("access_status")
+        if access_status not in ALLOWED_SOURCE_ACCESS_STATUSES:
+            raise ManageError(
+                f"research.jsonl line {line_number} has an invalid access_status"
+            )
+    research = brief.get("research")
+    depth = research.get("depth") if isinstance(research, dict) else None
+    explicit_opt_out = str(depth).strip().lower() in {
+        "none",
+        "なし",
+        "今回は行わない",
+    }
+    if strict and record_count == 0 and not explicit_opt_out:
+        raise ManageError("research.jsonl has no source records")
+
+
 def require_resolved_brief(workspace: Path, run_dir: Path) -> dict:
     brief = read_json(run_dir / "brief.json")
     automation_mode = brief.get("automation_mode")
@@ -894,12 +1088,15 @@ def require_resolved_brief(workspace: Path, run_dir: Path) -> dict:
         raise ManageError("brief.json references must be a list")
     for reference in references:
         validate_source_url(reference)
+    validate_access_plan(brief)
     return brief
 
 
 def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> None:
     if not (run_dir / "article.md").is_file():
         raise ManageError("missing article.md")
+    brief = read_json(run_dir / "brief.json")
+    validate_research_records(run_dir, brief)
     package = read_json(run_dir / "article-package.json")
     preflight = package.get("preflight")
     status = preflight.get("status") if isinstance(preflight, dict) else preflight
@@ -945,6 +1142,32 @@ def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> 
             raise ManageError("missing image-plan.md")
         if thumbnail_text not in image_plan.read_text(encoding="utf-8"):
             raise ManageError("image-plan.md is missing the exact thumbnail_text")
+    access = validate_access_plan(brief)
+    package_access = package.get("access")
+    if access.get("legacy_default") is True and package_access is None:
+        package_access = {"model": "free"}
+    if not isinstance(package_access, dict) or package_access.get("model") != access["model"]:
+        raise ManageError("article package access model does not match the Brief")
+    if access["model"] == "paid":
+        if package_access.get("paywall_after") != access["paywall_after"]:
+            raise ManageError("article package paywall position does not match the Brief")
+        package_price = package_access.get("price")
+        if not isinstance(package_price, dict) or (
+            package_price.get("currency") != access["price"]["currency"]
+            or package_price.get("proposal") != access["price"]["proposal"]
+        ):
+            raise ManageError("article package price proposal does not match the Brief")
+        article_text = (run_dir / "article.md").read_text(encoding="utf-8")
+        if access["paywall_after"] not in article_text:
+            raise ManageError("article.md is missing the confirmed paywall heading")
+        paid_plan = run_dir / "paid-plan.md"
+        if not paid_plan.is_file():
+            raise ManageError("paid article is missing paid-plan.md")
+        paid_plan_text = paid_plan.read_text(encoding="utf-8")
+        if access["paywall_after"] not in paid_plan_text or str(
+            access["price"]["proposal"]
+        ) not in paid_plan_text:
+            raise ManageError("paid-plan.md does not match the Brief")
     if require_checkpoint and state.get("phases", {}).get("preflight", {}).get(
         "status"
     ) != "completed":
@@ -968,6 +1191,8 @@ def validate_checkpoint_gate(run_dir: Path, state: dict, phase: str, status: str
         validate_preflight(run_dir, state, require_checkpoint=False)
     elif phase in {"account_check", "stage", "verify"}:
         validate_preflight(run_dir, state, require_checkpoint=True)
+        if status != "waiting_user":
+            require_paid_commercial_confirmation(brief, state)
     if phase == "verify":
         if not state.get("draft_url"):
             raise ManageError("cannot verify without a checkpointed draft_url")
@@ -1075,6 +1300,13 @@ def self_check() -> dict:
     assert validate_source_url({"url": "https://example.com/source"}) == (
         "https://example.com/source"
     )
+    assert validate_access_plan({"schema_version": 1})["legacy_default"] is True
+    try:
+        validate_access_plan({"schema_version": BRIEF_SCHEMA_VERSION})
+    except ManageError:
+        pass
+    else:
+        raise AssertionError("schema 2 Brief without access was accepted")
     for unsafe_reference in (
         "http://example.com/article",
         "https://user:secret@example.com/article",
@@ -1296,7 +1528,7 @@ def self_check() -> dict:
         write_json(
             run_dir / "brief.json",
             {
-                "schema_version": 1,
+                "schema_version": BRIEF_SCHEMA_VERSION,
                 "automation_mode": "guided",
                 "outline_confirmation": "always",
                 "topic": "self-check",
@@ -1305,6 +1537,7 @@ def self_check() -> dict:
                 "target_characters": 1000,
                 "tone": "self-check",
                 "research": {"depth": "standard"},
+                "access": {"model": "free"},
                 "images": {
                     "count": 1,
                     "thumbnail": True,
@@ -1335,6 +1568,34 @@ def self_check() -> dict:
             raise AssertionError("guided outline setting was bypassed")
         brief["outline_confirmation"] = "always"
         write_json(run_dir / "brief.json", brief)
+        research_record = {
+            "schema_version": 1,
+            "source_id": "src-001",
+            "url": "https://example.com/source",
+            "platform": "Example official site",
+            "source_type": "official",
+            "evidence_role": "primary",
+            "research_question": "What supports the self-check?",
+            "accessed_at": utc_now(),
+            "access_status": "read",
+        }
+        research_path = run_dir / "research.jsonl"
+        invalid_research = dict(research_record)
+        del invalid_research["platform"]
+        research_path.write_text(
+            json.dumps(invalid_research, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        try:
+            validate_research_records(run_dir, brief)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("schema 2 research record without platform was accepted")
+        research_path.write_text(
+            json.dumps(research_record, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
         (run_dir / "article.md").write_text("# Self check\n", encoding="utf-8")
         (run_dir / "image-plan.md").write_text(
             "# Image plan\n\n- body text: Inline text\n- thumbnail text: Self check\n",
@@ -1347,8 +1608,9 @@ def self_check() -> dict:
         write_json(
             run_dir / "article-package.json",
             {
-                "schema_version": 1,
+                "schema_version": BRIEF_SCHEMA_VERSION,
                 "preflight": "pass",
+                "access": {"model": "free"},
                 "images": [
                     {
                         "path": "images/body.png",
@@ -1443,6 +1705,96 @@ def self_check() -> dict:
         assert saved["draft_url"] == "https://note.com/example/n/test"
         assert workspace_status(workspace)["runs"][0]["run_id"] == "self-check"
 
+        # Paid articles can be fully written and preflighted, but commercial
+        # staging stays blocked until the current attended run confirms both
+        # price and paywall placement.
+        paid_run = new_run(workspace, "paid-check")
+        paid_dir = Path(paid_run["run_dir"])
+        write_json(
+            paid_dir / "brief.json",
+            {
+                "schema_version": BRIEF_SCHEMA_VERSION,
+                "automation_mode": "guided",
+                "outline_confirmation": "always",
+                "topic": "paid self-check",
+                "purpose": "self-check",
+                "audience": "self-check",
+                "target_characters": 1000,
+                "tone": "self-check",
+                "research": {"depth": "standard"},
+                "access": {
+                    "model": "paid",
+                    "purchase_promise": "A reproducible result",
+                    "free_preview_delivers": ["Audience fit"],
+                    "paid_section_delivers": ["Procedure", "Checklist"],
+                    "paywall_after": "## Paid procedure",
+                    "paywall_confirmed_at": None,
+                    "price": {
+                        "currency": "JPY",
+                        "proposal": 980,
+                        "rationale": "Includes a procedure and checklist",
+                        "confirmed_at": None,
+                    },
+                    "referral_rate": {
+                        "proposal_percent": None,
+                        "confirmed_at": None,
+                    },
+                },
+                "images": {"count": 0, "thumbnail": False},
+                "field_origins": {"topic": "self-check"},
+                "conflicts": [],
+                "resolved_at": utc_now(),
+                "confirmed_at": utc_now(),
+                "outline_confirmed_at": utc_now(),
+            },
+        )
+        (paid_dir / "article.md").write_text(
+            "# Paid self-check\n\nFree preview.\n\n## Paid procedure\n\nSteps.\n",
+            encoding="utf-8",
+        )
+        shutil.copy2(run_dir / "research.jsonl", paid_dir / "research.jsonl")
+        (paid_dir / "paid-plan.md").write_text(
+            "# Paid plan\n\n- paywall: ## Paid procedure\n- price: JPY 980\n",
+            encoding="utf-8",
+        )
+        write_json(
+            paid_dir / "article-package.json",
+            {
+                "schema_version": BRIEF_SCHEMA_VERSION,
+                "preflight": "pass",
+                "access": {
+                    "model": "paid",
+                    "paywall_after": "## Paid procedure",
+                    "price": {"currency": "JPY", "proposal": 980},
+                },
+                "images": [],
+                "thumbnail": None,
+            },
+        )
+        checkpoint(workspace, "paid-check", "preflight", "completed", None)
+        try:
+            checkpoint(workspace, "paid-check", "stage", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("unconfirmed paid staging was accepted")
+        paid_brief = read_json(paid_dir / "brief.json")
+        paid_brief["access"]["price"]["confirmed_at"] = "2020-01-01T00:00:00Z"
+        paid_brief["access"]["paywall_confirmed_at"] = "2020-01-01T00:00:00Z"
+        write_json(paid_dir / "brief.json", paid_brief)
+        try:
+            checkpoint(workspace, "paid-check", "stage", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("previous-run paid confirmations were accepted")
+        paid_brief["access"]["price"]["confirmed_at"] = utc_now()
+        paid_brief["access"]["paywall_confirmed_at"] = utc_now()
+        write_json(paid_dir / "brief.json", paid_brief)
+        assert checkpoint(
+            workspace, "paid-check", "stage", "completed", None
+        )["current_phase"] == "stage"
+
         operating_rules.write_text(
             re.sub(
                 r"(?m)^([ \t]*-[ \t]*自動化モード[ \t]*[:：][ \t]*)guided[ \t]*$",
@@ -1460,7 +1812,7 @@ def self_check() -> dict:
         write_json(
             autopilot_dir / "brief.json",
             {
-                "schema_version": 1,
+                "schema_version": BRIEF_SCHEMA_VERSION,
                 "automation_mode": "autopilot",
                 "outline_confirmation": "request_only",
                 "topic": "self-check",
@@ -1469,6 +1821,7 @@ def self_check() -> dict:
                 "target_characters": 1000,
                 "tone": "self-check",
                 "research": {"depth": "standard"},
+                "access": {"model": "free"},
                 "images": {"count": 0},
                 "field_origins": {"topic": "self-check"},
                 "conflicts": [],
@@ -1479,6 +1832,48 @@ def self_check() -> dict:
         assert checkpoint(
             workspace, "autopilot-check", "research", "running", None
         )["current_phase"] == "research"
+
+        autopilot_paid_run = new_run(workspace, "autopilot-paid-check")
+        autopilot_paid_dir = Path(autopilot_paid_run["run_dir"])
+        autopilot_paid_brief = dict(paid_brief)
+        autopilot_paid_brief["automation_mode"] = "autopilot"
+        autopilot_paid_brief["outline_confirmation"] = "request_only"
+        autopilot_paid_brief["confirmed_at"] = None
+        autopilot_paid_brief["outline_confirmed_at"] = None
+        autopilot_paid_brief["access"] = dict(paid_brief["access"])
+        autopilot_paid_brief["access"]["price"] = dict(
+            paid_brief["access"]["price"]
+        )
+        autopilot_paid_brief["access"]["price"]["confirmed_at"] = None
+        autopilot_paid_brief["access"]["paywall_confirmed_at"] = None
+        write_json(autopilot_paid_dir / "brief.json", autopilot_paid_brief)
+        shutil.copy2(paid_dir / "article.md", autopilot_paid_dir / "article.md")
+        shutil.copy2(
+            paid_dir / "research.jsonl", autopilot_paid_dir / "research.jsonl"
+        )
+        shutil.copy2(paid_dir / "paid-plan.md", autopilot_paid_dir / "paid-plan.md")
+        shutil.copy2(
+            paid_dir / "article-package.json",
+            autopilot_paid_dir / "article-package.json",
+        )
+        checkpoint(
+            workspace, "autopilot-paid-check", "preflight", "completed", None
+        )
+        assert checkpoint(
+            workspace,
+            "autopilot-paid-check",
+            "account_check",
+            "waiting_user",
+            None,
+        )["current_status"] == "waiting_user"
+        try:
+            checkpoint(
+                workspace, "autopilot-paid-check", "stage", "completed", None
+            )
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("autopilot paid staging was accepted")
 
         outside = root / "outside.png"
         outside.write_bytes(one_pixel_png)
