@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="670" viewBox="0 0 1280 670">
+  <rect width="1280" height="670" fill="#14201c"/>
+  <rect x="52" y="52" width="1176" height="566" fill="none" stroke="#5fd3ae" stroke-width="4"/>
+  <text x="100" y="260" fill="#d6e5df"
+        font-family="Hiragino Sans, Yu Gothic, sans-serif"
+        font-size="38" font-weight="700">Brain adapter capability test</text>
+  <text x="102" y="350" fill="#5fd3ae"
+        font-family="SFMono-Regular, Menlo, monospace"
+        font-size="34">UNPUBLISHED QA DRAFT</text>
+  <text x="102" y="510" fill="#d6e5df"
+        font-family="Hiragino Sans, Yu Gothic, sans-serif"
+        font-size="30">1280 × 670 / do not publish or sell</text>
+</svg>

@@ -10,8 +10,10 @@ import json
 import os
 import re
 import shutil
+import struct
 import sys
 import tempfile
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
 from urllib.parse import unquote, urlsplit, urlunsplit
@@ -35,6 +37,8 @@ SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")
 ACCOUNT_HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{3,64}$")
 ALLOWED_BROWSERS = {"chrome", "safari"}
 ALLOWED_AGENTS = {"codex", "claude", "hermes"}
+ALLOWED_TARGETS = {"note", "brain"}
+ALLOWED_IMAGE_KINDS = {"article", "diagram", "comparison", "flow", "thumbnail"}
 PLATFORM_HANDLE_KEYS = {
     "note": "expected_account_handle",
     "brain": "expected_brain_handle",
@@ -191,12 +195,15 @@ def doctor(
     browser: str | None = None,
     agent_name: str = "codex",
     *,
+    target: str = "note",
     platform_name: str | None = None,
 ) -> dict:
     if browser is not None and browser not in ALLOWED_BROWSERS:
         raise ManageError(f"unsupported browser: {browser}")
     if agent_name not in ALLOWED_AGENTS:
         raise ManageError(f"unsupported agent: {agent_name}")
+    if target not in ALLOWED_TARGETS:
+        raise ManageError(f"unsupported target: {target}")
 
     python_ok = sys.version_info >= (3, 10)
     checks = {
@@ -241,6 +248,16 @@ def doctor(
                 }
     checks["workspace"] = workspace_check
 
+    if target == "brain":
+        checks["brain_browser"] = {
+            "status": "pass" if browser is not None else "blocked",
+            "detail": (
+                f"Brain capability will be checked through {browser}"
+                if browser is not None
+                else "Brain requires an explicitly selected browser"
+            ),
+        }
+
     if browser is not None:
         current_platform = platform_name or sys.platform
         platform_ok = browser != "safari" or current_platform == "darwin"
@@ -271,6 +288,8 @@ def doctor(
                 "hermes": "computer_use",
             }[agent_name]
         )
+    if target == "brain":
+        runtime_names.append("brain_semantic_observation")
     runtime_checks = {
         name: {
             "status": "pending",
@@ -282,6 +301,7 @@ def doctor(
     return {
         "browser": browser,
         "agent": agent_name,
+        "target": target,
         "workspace": str(workspace),
         "status": "blocked" if blocked else "pending",
         "ready": False,
@@ -396,6 +416,75 @@ def image_mime(path: Path) -> str:
     raise ManageError(f"unsupported or invalid image: {path}")
 
 
+def image_dimensions(path: Path) -> tuple[int, int]:
+    with path.open("rb") as stream:
+        head = stream.read(32)
+        if head.startswith(b"\x89PNG\r\n\x1a\n") and head[12:16] == b"IHDR":
+            return struct.unpack(">II", head[16:24])
+        if head.startswith((b"GIF87a", b"GIF89a")):
+            return struct.unpack("<HH", head[6:10])
+        if not head.startswith(b"\xff\xd8"):
+            raise ManageError(f"cannot read image dimensions: {path}")
+        stream.seek(2)
+        while True:
+            marker_start = stream.read(1)
+            if not marker_start:
+                break
+            if marker_start != b"\xff":
+                continue
+            marker = stream.read(1)
+            while marker == b"\xff":
+                marker = stream.read(1)
+            if not marker or marker in {b"\xd8", b"\xd9"}:
+                continue
+            length_bytes = stream.read(2)
+            if len(length_bytes) != 2:
+                break
+            length = struct.unpack(">H", length_bytes)[0]
+            if length < 2:
+                break
+            if marker[0] in {
+                0xC0,
+                0xC1,
+                0xC2,
+                0xC3,
+                0xC5,
+                0xC6,
+                0xC7,
+                0xC9,
+                0xCA,
+                0xCB,
+                0xCD,
+                0xCE,
+                0xCF,
+            }:
+                payload = stream.read(5)
+                if len(payload) != 5:
+                    break
+                height, width = struct.unpack(">HH", payload[1:5])
+                return width, height
+            stream.seek(length - 2, 1)
+    raise ManageError(f"cannot read JPEG dimensions: {path}")
+
+
+def make_solid_png(width: int, height: int) -> bytes:
+    signature = b"\x89PNG\r\n\x1a\n"
+
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(payload))
+            + kind
+            + payload
+            + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)
+        )
+
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    row = b"\x00" + (b"\xf6\xf8\xf7" * width)
+    return signature + chunk(b"IHDR", ihdr) + chunk(
+        b"IDAT", zlib.compress(row * height, level=9)
+    ) + chunk(b"IEND", b"")
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -468,6 +557,8 @@ def validate_workspace(workspace: Path) -> dict:
                 assets[relative] = {
                     "path": relative,
                     "mime": image_mime(image),
+                    "width": image_dimensions(image)[0],
+                    "height": image_dimensions(image)[1],
                     "bytes": size,
                     "sha256": sha256_file(image),
                     "referenced_by": [],
@@ -711,10 +802,49 @@ def validate_run_image(run_dir: Path, item: dict) -> None:
     digest = sha256_file(image)
     if item.get("sha256") != digest:
         raise ManageError(f"run image hash mismatch: {raw_path}")
+    kind = item.get("kind")
+    if kind not in ALLOWED_IMAGE_KINDS:
+        raise ManageError(f"run image has an invalid kind: {raw_path}")
+    width, height = image_dimensions(image)
+    if item.get("width") != width or item.get("height") != height:
+        raise ManageError(f"run image dimensions do not match the file: {raw_path}")
+    if width < 320 or height < 180:
+        raise ManageError(f"run image is too small for article use: {raw_path}")
     for field in ("placement", "alt"):
         value = item.get(field)
         if not isinstance(value, str) or not value.strip():
             raise ManageError(f"run image is missing {field}: {raw_path}")
+    if len(item["alt"].strip()) < 8:
+        raise ManageError(f"run image alt text is too vague: {raw_path}")
+    if "text" in item:
+        exact_text = item.get("text")
+        if not isinstance(exact_text, str) or not exact_text.strip():
+            raise ManageError(f"run image has empty text metadata: {raw_path}")
+        if item.get("text_verified") is not True:
+            raise ManageError(f"run image text is not verified: {raw_path}")
+        image_plan = run_dir / "image-plan.md"
+        if not image_plan.is_file() or exact_text not in image_plan.read_text(
+            encoding="utf-8"
+        ):
+            raise ManageError(f"image-plan.md is missing run image text: {raw_path}")
+
+
+def validate_source_url(value: object) -> str:
+    if isinstance(value, str):
+        raw_url = value
+    elif isinstance(value, dict) and isinstance(value.get("url"), str):
+        raw_url = value["url"]
+    else:
+        raise ManageError("brief.json references must contain URL strings or objects")
+    parsed = urlsplit(raw_url)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+    ):
+        raise ManageError("reference URLs must use HTTPS and contain no credentials")
+    return raw_url
 
 
 def require_resolved_brief(workspace: Path, run_dir: Path) -> dict:
@@ -759,6 +889,11 @@ def require_resolved_brief(workspace: Path, run_dir: Path) -> dict:
         raise ManageError("brief.json has an invalid outline_confirmation")
     if configured_outline == "毎回" and brief["outline_confirmation"] != "always":
         raise ManageError("brief.json cannot bypass 構成確認: 毎回")
+    references = brief.get("references", [])
+    if not isinstance(references, list):
+        raise ManageError("brief.json references must be a list")
+    for reference in references:
+        validate_source_url(reference)
     return brief
 
 
@@ -770,7 +905,10 @@ def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> 
     status = preflight.get("status") if isinstance(preflight, dict) else preflight
     if status != "pass":
         raise ManageError("article-package.json preflight is not pass")
-    for item in package.get("images", []):
+    images = package.get("images", [])
+    if not isinstance(images, list):
+        raise ManageError("article package images must be a list")
+    for item in images:
         if not isinstance(item, dict):
             raise ManageError("article package image must be an object")
         validate_run_image(run_dir, item)
@@ -782,6 +920,11 @@ def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> 
     brief_images = read_json(run_dir / "brief.json").get("images")
     if not isinstance(brief_images, dict):
         raise ManageError("brief.json images must be an object")
+    expected_count = brief_images.get("count")
+    if not isinstance(expected_count, int) or expected_count < 0:
+        raise ManageError("brief.json images.count must be a non-negative integer")
+    if len(images) != expected_count:
+        raise ManageError("article package body image count does not match the Brief")
     if brief_images.get("thumbnail") is True:
         if not isinstance(thumbnail, dict):
             raise ManageError("article package is missing the required thumbnail")
@@ -793,6 +936,10 @@ def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> 
             or thumbnail.get("text_verified") is not True
         ):
             raise ManageError("thumbnail text is not verified character-for-character")
+        if thumbnail.get("kind") != "thumbnail":
+            raise ManageError("article package thumbnail has the wrong kind")
+        if thumbnail.get("width") != 1280 or thumbnail.get("height") != 670:
+            raise ManageError("note thumbnail must be exactly 1280x670")
         image_plan = run_dir / "image-plan.md"
         if not image_plan.is_file():
             raise ManageError("missing image-plan.md")
@@ -920,6 +1067,25 @@ def self_check() -> dict:
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
         "YAAAAAYAAjCB0C8AAAAASUVORK5CYII="
     )
+    body_png = make_solid_png(640, 360)
+    thumbnail_png = make_solid_png(1280, 670)
+    assert validate_source_url("https://example.com/article") == (
+        "https://example.com/article"
+    )
+    assert validate_source_url({"url": "https://example.com/source"}) == (
+        "https://example.com/source"
+    )
+    for unsafe_reference in (
+        "http://example.com/article",
+        "https://user:secret@example.com/article",
+        "not-a-url",
+    ):
+        try:
+            validate_source_url(unsafe_reference)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError(f"unsafe reference URL was accepted: {unsafe_reference}")
     with tempfile.TemporaryDirectory(prefix="write-note-drafts-") as temp:
         root = Path(temp)
         workspace = root / "workspace"
@@ -951,6 +1117,7 @@ def self_check() -> dict:
             raise AssertionError("relative workspace path was accepted")
         common_doctor = doctor(root / "common-workspace")
         assert common_doctor["browser"] is None
+        assert common_doctor["target"] == "note"
         assert set(common_doctor["runtime_checks"]) == {"web", "imagegen"}
         chrome_doctor = doctor(root / "chrome-workspace", "chrome")
         assert chrome_doctor["status"] == "pending"
@@ -966,6 +1133,22 @@ def self_check() -> dict:
         assert set(
             doctor(root / "claude-workspace", "safari", "claude")["runtime_checks"]
         ) == {"web", "image_generation", "computer_use_mcp"}
+        brain_doctor = doctor(
+            root / "brain-workspace", "chrome", "codex", target="brain"
+        )
+        assert brain_doctor["target"] == "brain"
+        assert brain_doctor["local_checks"]["brain_browser"]["status"] == "pass"
+        assert set(brain_doctor["runtime_checks"]) == {
+            "web",
+            "imagegen",
+            "chrome_connector",
+            "brain_semantic_observation",
+        }
+        brain_without_browser = doctor(
+            root / "brain-workspace", target="brain"
+        )
+        assert brain_without_browser["status"] == "blocked"
+        assert brain_without_browser["blocking_checks"] == ["brain_browser"]
         safari_doctor = doctor(
             root / "safari-workspace", "safari", platform_name="darwin"
         )
@@ -1154,9 +1337,13 @@ def self_check() -> dict:
         write_json(run_dir / "brief.json", brief)
         (run_dir / "article.md").write_text("# Self check\n", encoding="utf-8")
         (run_dir / "image-plan.md").write_text(
-            "# Image plan\n\n- thumbnail text: Self check\n", encoding="utf-8"
+            "# Image plan\n\n- body text: Inline text\n- thumbnail text: Self check\n",
+            encoding="utf-8",
         )
-        (run_dir / "images" / "image.png").write_bytes(one_pixel_png)
+        (run_dir / "images" / "body.png").write_bytes(body_png)
+        (run_dir / "images" / "thumbnail.png").write_bytes(thumbnail_png)
+        assert image_dimensions(run_dir / "images" / "body.png") == (640, 360)
+        assert image_dimensions(run_dir / "images" / "thumbnail.png") == (1280, 670)
         write_json(
             run_dir / "article-package.json",
             {
@@ -1164,17 +1351,25 @@ def self_check() -> dict:
                 "preflight": "pass",
                 "images": [
                     {
-                        "path": "images/image.png",
+                        "path": "images/body.png",
                         "mime": "image/png",
-                        "sha256": hashlib.sha256(one_pixel_png).hexdigest(),
+                        "sha256": hashlib.sha256(body_png).hexdigest(),
+                        "kind": "diagram",
+                        "width": 640,
+                        "height": 360,
                         "placement": "after introduction",
                         "alt": "Self-check body image",
+                        "text": "Inline text",
+                        "text_verified": True,
                     }
                 ],
                 "thumbnail": {
-                    "path": "images/image.png",
+                    "path": "images/thumbnail.png",
                     "mime": "image/png",
-                    "sha256": hashlib.sha256(one_pixel_png).hexdigest(),
+                    "sha256": hashlib.sha256(thumbnail_png).hexdigest(),
+                    "kind": "thumbnail",
+                    "width": 1280,
+                    "height": 670,
                     "placement": "thumbnail",
                     "alt": "Self-check thumbnail",
                     "text": "Self check",
@@ -1192,7 +1387,8 @@ def self_check() -> dict:
         package["thumbnail"]["text_verified"] = True
         write_json(run_dir / "article-package.json", package)
         (run_dir / "image-plan.md").write_text(
-            "# Image plan\n\n- thumbnail text: Different copy\n", encoding="utf-8"
+            "# Image plan\n\n- body text: Inline text\n- thumbnail text: Different copy\n",
+            encoding="utf-8",
         )
         try:
             checkpoint(workspace, "self-check", "preflight", "completed", None)
@@ -1201,7 +1397,8 @@ def self_check() -> dict:
         else:
             raise AssertionError("thumbnail text missing from image-plan.md was accepted")
         (run_dir / "image-plan.md").write_text(
-            "# Image plan\n\n- thumbnail text: Self check\n", encoding="utf-8"
+            "# Image plan\n\n- body text: Inline text\n- thumbnail text: Self check\n",
+            encoding="utf-8",
         )
         package = read_json(run_dir / "article-package.json")
         del package["images"][0]["placement"]
@@ -1213,6 +1410,25 @@ def self_check() -> dict:
         else:
             raise AssertionError("image without placement was accepted")
         package["images"][0]["placement"] = "after introduction"
+        write_json(run_dir / "article-package.json", package)
+        package["images"][0]["width"] = 639
+        write_json(run_dir / "article-package.json", package)
+        try:
+            checkpoint(workspace, "self-check", "preflight", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("image dimension mismatch was accepted")
+        package["images"][0]["width"] = 640
+        package["images"][0]["text_verified"] = False
+        write_json(run_dir / "article-package.json", package)
+        try:
+            checkpoint(workspace, "self-check", "preflight", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("unverified body image text was accepted")
+        package["images"][0]["text_verified"] = True
         write_json(run_dir / "article-package.json", package)
         checkpoint(workspace, "self-check", "preflight", "completed", None)
         saved = checkpoint(
@@ -1300,6 +1516,9 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_parser.add_argument(
         "--agent", choices=sorted(ALLOWED_AGENTS), default="codex"
     )
+    doctor_parser.add_argument(
+        "--target", choices=sorted(ALLOWED_TARGETS), default="note"
+    )
 
     ready_parser = commands.add_parser("ready")
     add_workspace_option(ready_parser)
@@ -1341,7 +1560,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.command == "init":
                 result = init_workspace(workspace, args.browser)
             elif args.command == "doctor":
-                result = doctor(workspace, args.browser, args.agent)
+                result = doctor(
+                    workspace, args.browser, args.agent, target=args.target
+                )
             elif args.command == "status":
                 result = workspace_status(workspace)
             elif args.command == "ready":

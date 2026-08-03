@@ -172,6 +172,8 @@ Do not research or draft until the resolved Brief passes its automation gate. Th
 Use `confirmed_at` for the user confirmation timestamp in `guided`. In `autopilot`, leave it `null` and proceed only when `topic` is present, `conflicts` is empty, all required values resolve, and `resolved_at` is present.
 Set `outline_confirmed_at` before drafting when the run's `outline_confirmation` is `always`. Leave it `null` for `request_only`.
 
+`references` is a list of HTTPS URL strings or objects containing an HTTPS `url`. Credentials embedded in URLs are rejected. Open each supplied URL before claiming to have read it; record inaccessible pages as inaccessible rather than reconstructing their contents from a search result.
+
 ## Research record
 
 Each JSONL line has:
@@ -193,6 +195,7 @@ Each JSONL line has:
   "figures": [],
   "quote_candidates": [],
   "key_points": [],
+  "access_status": "read",
   "conflicts": []
 }
 ```
@@ -212,7 +215,20 @@ The package contains no browser selector or CMS-specific HTML:
   "headings": [],
   "links": [],
   "inline_hashtags": [],
-  "images": [],
+  "images": [
+    {
+      "path": "images/diagram.png",
+      "mime": "image/png",
+      "sha256": "hex digest",
+      "kind": "diagram",
+      "width": 1200,
+      "height": 675,
+      "placement": "after section 2",
+      "alt": "URLから記事の材料を整理する三段階の図解",
+      "text": "URLを渡すだけで、記事の材料が見える",
+      "text_verified": true
+    }
+  ],
   "thumbnail": null,
   "claim_sources": {},
   "content_fingerprint": "sha256",
@@ -220,7 +236,7 @@ The package contains no browser selector or CMS-specific HTML:
 }
 ```
 
-An image entry contains a run-relative path, MIME, SHA-256, placement, alt text, and any supported claim IDs.
+An image entry contains a run-relative path, MIME, SHA-256, kind, actual pixel dimensions, placement, alt text, and any supported claim IDs. Allowed kinds are `article`, `diagram`, `comparison`, `flow`, and `thumbnail`. When a rendered image contains text, include the exact `text` and set `text_verified` only after visually checking the final file character-for-character. Body-image count must exactly match `brief.json images.count`; a thumbnail is counted separately. note thumbnails must be exactly `1280x670`.
 
 ## Checkpoint and receipt
 

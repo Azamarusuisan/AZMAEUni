@@ -57,15 +57,17 @@ Run each provider independently; never fall back from one to the other.
 | Save reread | Required | Required | Observes saved state, rereads the same draft, and matches the expected fingerprint |
 | Unknown or ambiguous UI | Required | Required | Stops without guessing and reports exact manual recovery |
 
-For Chrome, use the current host's supported Chrome control and logged-in profile. For Safari, use the current host's supported semantic Computer Use surface. Run `doctor --agent codex|claude|hermes --browser chrome|safari` for the tested combination. Record the agent/provider, capability availability, OS/browser versions, note UI language, run ID, draft URL without query parameters, and result.
+For Chrome, use the current host's supported Chrome control and logged-in profile. For Safari, use the current host's supported semantic Computer Use surface. Run `doctor --agent codex|claude|hermes --browser chrome|safari --target note|brain` for the tested combination. For Brain, the browser is mandatory and `brain_semantic_observation` stays pending until the live editor controls are uniquely resolved. Record the agent/provider, target, capability availability, OS/browser versions, UI language, run ID, draft URL without query parameters, and result.
 
 ## Image and thumbnail case
 
 Generate one thumbnail and at least two distinct body images through the current host's verified image capability. Pass when:
 
 - each final file is copied into the current run before upload;
-- asset validation succeeds and hashes match the upload manifest;
+- asset validation succeeds and MIME, hashes, image kinds, and actual pixel dimensions match the upload manifest;
 - body images appear in the planned order with one- or two-sentence ALT text;
+- body-image count exactly matches the Brief;
+- every text-bearing body image records the exact copy in `image-plan.md` and passes a character-for-character visual check;
 - the thumbnail is present after reopening the draft;
 - required thumbnail copy is visually checked character-for-character before upload;
 - a generation or validation failure leaves note unchanged.

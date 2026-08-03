@@ -1,23 +1,23 @@
 {
   "name": "write-note-drafts",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Research, write, illustrate, and save verified unpublished note article drafts.",
   "author": {
     "name": "Azamarusuisan",
     "url": "https://github.com/Azamarusuisan"
   },
-  "homepage": "https://github.com/Azamarusuisan/AZMAEUni",
+  "homepage": "https://azamarusuisan.github.io/AZMAEUni/",
   "repository": "https://github.com/Azamarusuisan/AZMAEUni",
-  "license": "MIT",
+  "license": "Proprietary",
   "keywords": ["note", "writing", "research", "drafts", "japanese"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Note Draft Pipeline",
     "shortDescription": "note記事を調査から未公開下書きまで作成",
-    "longDescription": "文体学習、調査、構成、執筆、画像生成、noteへの未公開下書き保存、保存後の再読検証までを一つの安全なワークフローで進めます。公開操作は行いません。",
+    "longDescription": "渡されたURLの確認、文体学習、調査、構成、執筆、文字入り画像と記事内図解の生成、noteへの未公開下書き保存、保存後の再読検証までを一つの安全なワークフローで進めます。公開操作は行いません。",
     "developerName": "Azamarusuisan",
     "category": "Productivity",
-    "capabilities": ["Web research", "Image generation", "Browser drafting"],
+    "capabilities": ["URL research", "Text image generation", "Browser drafting"],
     "defaultPrompt": [
       "私の文体を学習して、noteの未公開下書きを作って",
       "このテーマでnote記事を調査・執筆して下書き保存して",
