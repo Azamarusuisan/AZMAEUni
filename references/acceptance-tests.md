@@ -82,6 +82,10 @@ Generate one thumbnail and at least two distinct body images through the current
 - required thumbnail copy is visually checked character-for-character before upload;
 - a generation or validation failure leaves note unchanged.
 
+### Browser file-transfer rejection
+
+Simulate a browser connector that accepts text operations but rejects every local file upload. Pass when the agent stops after the first rejected upload, reuses the same checkpointed draft, records `browser_file_transfer_rejected`, writes a `save_unverified` receipt with expected/observed counts and missing paths, and starts the user report by saying the draft is incomplete. `checkpoint verify completed` must fail. It must not say 「下書きを保存しました」 or 「確認済み」 as the overall result.
+
 ## Resume and save verification case
 
 Interrupt immediately after checkpointing the first draft URL. Resume from the same run. Pass when exactly one draft exists, existing unexpected content is not overwritten, the saved indicator is observed, and reread verification covers title, headings, links, images, thumbnail, hashtags, and normalized body content. If either save observation or reread fails, the result must be `save_unverified`.

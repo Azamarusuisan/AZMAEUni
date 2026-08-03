@@ -679,7 +679,7 @@ git version 2.x.x
     </ol>
     <div class="box">
       <span class="head">固定版を入れる理由</span>
-      <p>Plugin本体は検証済みrelease tag <code>v0.3.0</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
+      <p>Plugin本体は検証済みrelease tag <code>v0.3.1</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
     </div>
 
     <h3>Claude Code／Hermesとも共有する</h3>
@@ -897,6 +897,7 @@ templates/default.md   記事の型
   },
   "ready": false,
   "runtime_checks": {
+    "browser_file_upload":{ "status": "pending", ... },
     "claude_in_chrome":  { "status": "pending", ... },
     "image_generation":  { "status": "pending", ... },
     "web":               { "status": "pending", ... }
@@ -927,7 +928,7 @@ templates/default.md   記事の型
       <span class="head">読み方</span>
       <ul class="plain">
         <li><code>blocking_checks: []</code> … ローカル側は問題なし。ここに <code>"python"</code> や <code>"platform"</code> が入っていたら先に進めません。</li>
-        <li><code>runtime_checks</code> がすべて <code>pending</code> なのは正常です。これはエージェントが会話の中で実際に呼び出して確認する項目で、コマンドラインからは判定できません。</li>
+        <li><code>runtime_checks</code> がすべて <code>pending</code> なのは正常です。これはエージェントが会話の中で実際に呼び出して確認する項目で、コマンドラインからは判定できません。画像を使う記事では、画像生成と <code>browser_file_upload</code> を別々に確認します。</li>
         <li><code>ready: false</code> は「初回育成がまだ」という意味です。</li>
       </ul>
     </div>
@@ -1349,7 +1350,7 @@ templates/default.md   記事の型
 
     <details>
       <summary>インストール時に「Azamarusuisanへログイン」と表示された</summary>
-      <p>古い <code>v0.1.0</code>／<code>v0.2.0</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.0</code> はインストール時のGitHub認証を要求しません。</p>
+      <p>古い <code>v0.1.0</code>／<code>v0.2.0</code>／<code>v0.3.0</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.1</code> はインストール時のGitHub認証を要求しません。</p>
     </details>
 
     <details>
@@ -1388,13 +1389,19 @@ templates/default.md   記事の型
     </details>
 
     <details>
+      <summary>画像は作られたが、noteに挿入されていない</summary>
+      <p><strong>本文だけの下書きは完了ではありません。</strong>画像生成とブラウザのファイル送信は別の能力です。Chromeなどが送信を拒否した場合は <code>browser_file_transfer_rejected</code>、状態は <code>save_unverified</code> になります。</p>
+      <p>新しい下書きを作らず、同じDraftRefまたはURLを再開してください。runの <code>images/</code> と <code>cms-receipt.json</code> の <code>missing_required_items</code> を確認し、不足画像だけを計画順に挿入します。再読後に期待画像数・観察画像数・画像path・サムネイルが一致した場合だけ <code>verified</code> です。</p>
+    </details>
+
+    <details>
       <summary>途中で落ちた／同じ記事を作り直したい</summary>
       <p>保存済みの下書き参照から再開します。<code>new-run</code> の冪等キーが同じ限り、下書きが二重に作られることはありません。<code>status</code> の <code>runs</code> に途中の run が残っています。</p>
     </details>
 
     <details>
       <summary>保存はされたが検証に失敗した（save_unverified）</summary>
-      <p>下書き自体は存在するので、表示された差分箇所を人が確認してください。<code>verified</code> 以外を「完了」と報告することはありません。</p>
+      <p>下書き自体は存在しますが未完成です。表示された差分箇所を人が確認してください。<code>verified</code> 以外を「完了」「保存確認済み」と報告することはありません。</p>
     </details>
 
     <details>

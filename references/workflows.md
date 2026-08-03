@@ -124,7 +124,7 @@ sequenceDiagram
 | `preflight` | Local package and asset validation pass |
 | `account_check` | Live handle exactly equals expected handle; paid runs are attended `guided` and have current price/paywall confirmations |
 | `stage` | Draft URL is checkpointed and content applied |
-| `verify` | Saved indicator and safe reread both pass |
+| `verify` | Saved indicator and safe reread both pass; receipt counts and paths match every required body image and thumbnail |
 
 `outline_only` exits after `outline`. `learn_style` and `setup` never enter a note mutation phase.
 
@@ -218,12 +218,14 @@ Manual recovery output lists the exact local `article.md`, image files in insert
 - Research records retain URL, publication/access dates, figures, and short quote candidates.
 - `outline_only` causes no body, image, or browser work.
 - Each generated image is copied into the run and validated before upload.
+- Browser file upload is verified separately from image generation. A rejected file transfer leaves the same draft at `save_unverified` and lists missing paths.
 - All local artifacts exist before the first note mutation.
 - Resume uses the same checkpointed draft.
 - Public, scheduled, account-switch, and credential actions do not exist.
 - Unknown screens and zero/multiple semantic targets cause a safe stop.
 - A mismatched note handle causes no mutation.
 - Both saved UI state and safe reread are required for success.
+- `verify completed` is impossible without a matching `cms-receipt.json`; text-only success cannot hide missing images.
 - Failures include retry and manual recovery instructions.
 
 ## Live compatibility

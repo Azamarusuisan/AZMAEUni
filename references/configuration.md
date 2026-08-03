@@ -280,11 +280,11 @@ The package `access.model` must equal the Brief. For paid articles, `paywall_aft
 
 `state.json` records the current phase, status, completed phases, immutable idempotency key, opaque draft reference, sanitized draft URL, and timestamps. Valid statuses are `pending`, `running`, `waiting_user`, `completed`, `failed`, and `save_unverified`.
 
-A successful receipt is:
+A successful schema 2 receipt is:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "cms": "note",
   "draft_url": "https://note.com/...",
   "saved_at": "ISO-8601 timestamp",
@@ -294,7 +294,11 @@ A successful receipt is:
     "content_fingerprint_matches": true,
     "title_matches": true,
     "required_images_present": true,
+    "expected_body_image_count": 2,
+    "observed_body_image_count": 2,
+    "verified_image_paths": ["images/diagram-1.png", "images/diagram-2.png"],
     "thumbnail_present": true,
+    "verified_thumbnail_path": "images/thumbnail.png",
     "inline_hashtags_present": true
   },
   "published": false
@@ -302,6 +306,10 @@ A successful receipt is:
 ```
 
 If the safe reread cannot confirm the content, use `save_unverified`; never call it success.
+
+New runs write receipt schema 2. `checkpoint --phase verify --status completed` validates the receipt against `article-package.json` and rejects missing or reordered body images, a missing thumbnail, a mismatched draft URL, non-false `published`, or any false core verification flag. Schema 1 remains readable for an in-progress older run, but still requires `required_images_present: true` and any required thumbnail before completion.
+
+A partial schema 2 draft keeps the same count, path, and thumbnail fields, sets `verification.status: save_unverified`, and adds a non-empty `missing_required_items` list containing every unobserved required image path. This permits the same draft to be resumed without pretending the article is complete.
 
 ## Failure contract
 

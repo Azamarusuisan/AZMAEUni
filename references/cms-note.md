@@ -136,6 +136,7 @@ heading blockごとにlevelと本文を適用する。現在のeditorが提供�
 - hashまたは配置から既に存在すると確認できた画像を再uploadしない。
 - 画像数、順序、placementを再読検証する。
 - alt text入力がeditor上で安全に利用できる場合だけ設定し、未対応ならreceiptへ明示する。
+- browserがローカルファイル送信を拒否した場合は、次の画像へ進まない。本文がautosaveされていてもstageは完了ではなく `save_unverified` とし、`error_code: browser_file_transfer_rejected`、挿入できなかった画像path、同じ下書きでの再開手順を記録する。
 
 ### Thumbnail
 
@@ -165,6 +166,16 @@ Article Packageの `inline_hashtags` を本文末尾の専用blockとして入�
 - 同じDraftRefであること
 
 保存表示だけ、URL取得だけ、本文の一部一致だけでは成功にしない。両条件を満たした場合だけ `verification.status: verified`、`published: false` のreceiptを保存する。判断不能なら `save_unverified` とする。
+
+schema 2 receiptでは `article-package.json` と次を一致させる。
+
+- `expected_body_image_count`: manifestのbody image数
+- `observed_body_image_count`: 再読で確認したbody image数
+- `verified_image_paths`: manifestと同じ順序のrun相対path
+- `thumbnail_present`: thumbnail必須時は `true`
+- `verified_thumbnail_path`: 確認したthumbnailのrun相対path
+
+一つでも不足、順序不一致、観察不能なら `verified` にしない。本文だけ一致した状態を記事全体の完了として報告しない。
 
 ## 再試行
 
@@ -200,3 +211,11 @@ local_artifacts:
 ```
 
 推測した原因や成功を記載しない。手動手順にはtitle、body、heading、link、画像順、thumbnail、inline hashtags、既知の下書きURLを含め、公開操作を案内しない。
+
+画像不足時の利用者向け先頭文は次の形にする。
+
+```text
+下書き本文は保存されましたが、画像3枚の挿入は完了していません。状態は save_unverified です。
+```
+
+「保存しました」「確認済み」を先頭に置かず、部分成功を全体成功に見せない。
