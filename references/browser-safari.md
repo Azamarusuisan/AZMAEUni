@@ -16,6 +16,7 @@ Safari providerはmacOS Computer Use経由で、利用者の既存Safariプロ�
 - Safariを一意に選択できる
 - 画面の意味的な対象を確認できる
 - Safariがnoteを開ける状態
+- 画像を含むrunでは、Computer Useがrun-local fileを現在のnote画面へ選択・送信できる状態
 
 現在hostのComputer Useが未提供ならtool discoveryを行う。利用可能にならなければ、Safariを起動、クリック、入力せず、[cms-note.mdの失敗報告](cms-note.md#失敗報告)を返す。
 
@@ -60,6 +61,8 @@ Codexではインストール済みpluginのfreshなsemantic observation、Herme
 各書込みは[cms-note.md](cms-note.md)が許可したaction IDだけを実行する。対象が0件または複数件、未知画面、公開関連画面、MFA、CAPTCHA、利用規約同意、許可外locationでは停止する。
 
 操作後は画面を再観察し、期待状態に変わったことを確認する。screenshot、画面全体の文字列、認証状態は既定で永続化しない。
+
+画像uploadは一件ずつ行い、画像blockまたはthumbnail previewを確認してから次へ進む。macOS file picker、Safari、またはComputer Useが送信を拒否した場合、権限を回避せず同じ下書きを `save_unverified` として保持する。
 
 Safari固有の観察差だけをこのproviderで吸収し、記事構造、handle照合、下書き保存、再読fingerprintの判定はnote adapterへ委ねる。
 

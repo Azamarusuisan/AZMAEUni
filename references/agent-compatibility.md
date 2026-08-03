@@ -51,6 +51,8 @@ python3 scripts/manage.py doctor --agent <codex|claude|hermes> \
 
 The Doctor must verify the capability in the current session. Installation of this Skill does not install browser extensions, image providers, macOS permissions, or agent toolsets. Codex Chrome and Safari support is conditional on the corresponding ChatGPT plugin being installed, enabled, and exposed to the current Work/Codex chat. Never claim full automation when a required capability is absent.
 
+When an article includes body images or a thumbnail, every browser path also requires the separate `browser_file_upload` runtime check. A callable image generator does not satisfy this check. The active agent must confirm that its current browser tool documents and permits sending a run-local file, then verify each uploaded image in the note editor. A rejected transfer produces `save_unverified`, never a successful draft receipt.
+
 For Brain, `--target brain` adds a `brain_semantic_observation` runtime check and
 requires an explicit browser. The active agent may mark that check as passed only
 after it observes the live Brain editor and uniquely resolves the required

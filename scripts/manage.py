@@ -27,6 +27,7 @@ DEFAULT_WORKSPACE = Path(
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 SCHEMA_VERSION = 1
 BRIEF_SCHEMA_VERSION = 2
+RECEIPT_SCHEMA_VERSION = 2
 IMAGE_LINK_RE = re.compile(
     r'(?<!\\)!\[[^\]]*]\(\s*(?P<target><[^>]+>|[^)\s]+)'
     r'(?:\s+(?:"[^"]*"|\'[^\']*\'))?\s*\)'
@@ -298,6 +299,8 @@ def doctor(
                 "hermes": "computer_use",
             }[agent_name]
         )
+    if browser is not None:
+        runtime_names.append("browser_file_upload")
     if target == "brain":
         runtime_names.append("brain_semantic_observation")
     runtime_checks = {
@@ -1174,6 +1177,137 @@ def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> 
         raise ManageError("preflight phase is not completed")
 
 
+def validate_cms_receipt(run_dir: Path, state: dict, expected_status: str) -> None:
+    receipt = read_json(run_dir / "cms-receipt.json")
+    schema_version = receipt.get("schema_version")
+    if schema_version not in {1, RECEIPT_SCHEMA_VERSION}:
+        raise ManageError("cms-receipt.json has an unsupported schema_version")
+    if receipt.get("cms") != "note":
+        raise ManageError("cms-receipt.json cms must be note")
+    if receipt.get("published") is not False:
+        raise ManageError("cms-receipt.json must record published=false")
+    if receipt.get("for_sale") not in {None, False}:
+        raise ManageError("cms-receipt.json must not record an active sale")
+    receipt_url = receipt.get("draft_url")
+    if not isinstance(receipt_url, str) or safe_draft_url(receipt_url) != state.get(
+        "draft_url"
+    ):
+        raise ManageError("cms-receipt.json draft_url does not match the checkpoint")
+
+    verification = receipt.get("verification")
+    if not isinstance(verification, dict):
+        raise ManageError("cms-receipt.json verification must be an object")
+    if verification.get("status") != expected_status:
+        raise ManageError(
+            f"cms-receipt.json verification.status must be {expected_status}"
+        )
+
+    package = read_json(run_dir / "article-package.json")
+    images = package.get("images", [])
+    if not isinstance(images, list):
+        raise ManageError("article package images must be a list")
+    expected_image_paths = [item.get("path") for item in images]
+    if any(not isinstance(path, str) or not path for path in expected_image_paths):
+        raise ManageError("article package image paths are invalid")
+    thumbnail = package.get("thumbnail")
+
+    if schema_version == RECEIPT_SCHEMA_VERSION:
+        expected_count = verification.get("expected_body_image_count")
+        observed_count = verification.get("observed_body_image_count")
+        if (
+            not isinstance(expected_count, int)
+            or isinstance(expected_count, bool)
+            or expected_count != len(expected_image_paths)
+        ):
+            raise ManageError("receipt expected_body_image_count is incorrect")
+        if (
+            not isinstance(observed_count, int)
+            or isinstance(observed_count, bool)
+            or not 0 <= observed_count <= expected_count
+        ):
+            raise ManageError("receipt observed_body_image_count is invalid")
+        verified_paths = verification.get("verified_image_paths")
+        if verified_paths != expected_image_paths[:observed_count]:
+            raise ManageError(
+                "receipt verified_image_paths must match uploaded package order"
+            )
+        thumbnail_present = verification.get("thumbnail_present")
+        if not isinstance(thumbnail_present, bool):
+            raise ManageError("receipt thumbnail_present must be a boolean")
+        if thumbnail is None:
+            if thumbnail_present or verification.get("verified_thumbnail_path") not in {
+                None,
+                "",
+            }:
+                raise ManageError("receipt records an unexpected thumbnail")
+        elif thumbnail_present:
+            if verification.get("verified_thumbnail_path") != thumbnail.get("path"):
+                raise ManageError("receipt verified_thumbnail_path does not match")
+        elif verification.get("verified_thumbnail_path") not in {None, ""}:
+            raise ManageError(
+                "receipt cannot verify a thumbnail path when thumbnail_present=false"
+            )
+
+        every_required_image_present = observed_count == expected_count and (
+            thumbnail is None or thumbnail_present
+        )
+        if verification.get("required_images_present") is not every_required_image_present:
+            raise ManageError(
+                "receipt required_images_present does not match observed assets"
+            )
+
+    if expected_status == "save_unverified":
+        missing = verification.get("missing_required_items")
+        if not isinstance(missing, list) or not missing or any(
+            not isinstance(item, str) or not item.strip() for item in missing
+        ):
+            raise ManageError(
+                "save_unverified receipt must list missing_required_items"
+            )
+        if schema_version == RECEIPT_SCHEMA_VERSION:
+            required_missing_paths = expected_image_paths[
+                verification["observed_body_image_count"] :
+            ]
+            if thumbnail is not None and verification["thumbnail_present"] is False:
+                required_missing_paths.append(thumbnail.get("path"))
+            absent = [path for path in required_missing_paths if path not in missing]
+            if absent:
+                raise ManageError(
+                    "save_unverified receipt omits missing image paths: "
+                    + ", ".join(absent)
+                )
+        return
+
+    for field in (
+        "saved_state_seen",
+        "content_fingerprint_matches",
+        "title_matches",
+        "required_images_present",
+    ):
+        if verification.get(field) is not True:
+            raise ManageError(f"verified receipt requires {field}=true")
+
+    if schema_version == RECEIPT_SCHEMA_VERSION:
+        if verification.get("observed_body_image_count") != len(expected_image_paths):
+            raise ManageError("receipt observed_body_image_count is incomplete")
+
+    if thumbnail is not None:
+        if verification.get("thumbnail_present") is not True:
+            raise ManageError("verified receipt is missing the required thumbnail")
+        if schema_version == RECEIPT_SCHEMA_VERSION and verification.get(
+            "verified_thumbnail_path"
+        ) != thumbnail.get("path"):
+            raise ManageError("receipt verified_thumbnail_path does not match")
+    elif schema_version == RECEIPT_SCHEMA_VERSION and verification.get(
+        "thumbnail_present"
+    ) is not False:
+        raise ManageError("receipt thumbnail_present must be false when not requested")
+
+    hashtags = package.get("inline_hashtags", [])
+    if hashtags and verification.get("inline_hashtags_present") is not True:
+        raise ManageError("verified receipt is missing required inline hashtags")
+
+
 def validate_checkpoint_gate(run_dir: Path, state: dict, phase: str, status: str) -> None:
     if phase == "intake":
         return
@@ -1196,8 +1330,15 @@ def validate_checkpoint_gate(run_dir: Path, state: dict, phase: str, status: str
     if phase == "verify":
         if not state.get("draft_url"):
             raise ManageError("cannot verify without a checkpointed draft_url")
-        if state.get("phases", {}).get("stage", {}).get("status") != "completed":
-            raise ManageError("stage phase is not completed")
+        stage_status = state.get("phases", {}).get("stage", {}).get("status")
+        if status == "completed":
+            if stage_status != "completed":
+                raise ManageError("stage phase is not completed")
+            validate_cms_receipt(run_dir, state, "verified")
+        elif status == "save_unverified":
+            if stage_status not in {"completed", "save_unverified"}:
+                raise ManageError("cannot record save_unverified before staging")
+            validate_cms_receipt(run_dir, state, "save_unverified")
 
 
 def checkpoint(
@@ -1358,13 +1499,19 @@ def self_check() -> dict:
             "web",
             "imagegen",
             "chrome_connector",
+            "browser_file_upload",
         }
         assert set(
             doctor(root / "hermes-workspace", "chrome", "hermes")["runtime_checks"]
-        ) == {"web", "image_generate", "browser_cdp"}
+        ) == {"web", "image_generate", "browser_cdp", "browser_file_upload"}
         assert set(
             doctor(root / "claude-workspace", "safari", "claude")["runtime_checks"]
-        ) == {"web", "image_generation", "computer_use_mcp"}
+        ) == {
+            "web",
+            "image_generation",
+            "computer_use_mcp",
+            "browser_file_upload",
+        }
         brain_doctor = doctor(
             root / "brain-workspace", "chrome", "codex", target="brain"
         )
@@ -1374,6 +1521,7 @@ def self_check() -> dict:
             "web",
             "imagegen",
             "chrome_connector",
+            "browser_file_upload",
             "brain_semantic_observation",
         }
         brain_without_browser = doctor(
@@ -1389,6 +1537,7 @@ def self_check() -> dict:
             "web",
             "imagegen",
             "computer_use",
+            "browser_file_upload",
         }
         assert (
             doctor(
@@ -1704,6 +1853,81 @@ def self_check() -> dict:
         assert saved["draft_ref"] == "draft-self-check"
         assert saved["draft_url"] == "https://note.com/example/n/test"
         assert workspace_status(workspace)["runs"][0]["run_id"] == "self-check"
+        try:
+            checkpoint(workspace, "self-check", "verify", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("verify completed without a receipt was accepted")
+
+        receipt = {
+            "schema_version": RECEIPT_SCHEMA_VERSION,
+            "cms": "note",
+            "draft_url": "https://note.com/example/n/test",
+            "saved_at": utc_now(),
+            "verification": {
+                "status": "verified",
+                "saved_state_seen": True,
+                "content_fingerprint_matches": True,
+                "title_matches": True,
+                "required_images_present": False,
+                "expected_body_image_count": 1,
+                "observed_body_image_count": 0,
+                "verified_image_paths": [],
+                "thumbnail_present": False,
+                "verified_thumbnail_path": None,
+                "inline_hashtags_present": True,
+            },
+            "published": False,
+        }
+        write_json(run_dir / "cms-receipt.json", receipt)
+        try:
+            checkpoint(workspace, "self-check", "verify", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("verified receipt with missing images was accepted")
+
+        receipt["verification"]["status"] = "save_unverified"
+        receipt["verification"]["missing_required_items"] = [
+            "images/body.png",
+        ]
+        write_json(run_dir / "cms-receipt.json", receipt)
+        try:
+            checkpoint(workspace, "self-check", "verify", "save_unverified", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError(
+                "save_unverified receipt omitted a missing thumbnail path"
+            )
+
+        receipt["verification"]["missing_required_items"] = [
+            "images/body.png",
+            "images/thumbnail.png",
+        ]
+        write_json(run_dir / "cms-receipt.json", receipt)
+        assert checkpoint(
+            workspace, "self-check", "verify", "save_unverified", None
+        )["status"] == "save_unverified"
+
+        receipt["verification"] = {
+            "status": "verified",
+            "saved_state_seen": True,
+            "content_fingerprint_matches": True,
+            "title_matches": True,
+            "required_images_present": True,
+            "expected_body_image_count": 1,
+            "observed_body_image_count": 1,
+            "verified_image_paths": ["images/body.png"],
+            "thumbnail_present": True,
+            "verified_thumbnail_path": "images/thumbnail.png",
+            "inline_hashtags_present": True,
+        }
+        write_json(run_dir / "cms-receipt.json", receipt)
+        assert checkpoint(
+            workspace, "self-check", "verify", "completed", None
+        )["status"] == "completed"
 
         # Paid articles can be fully written and preflighted, but commercial
         # staging stays blocked until the current attended run confirms both

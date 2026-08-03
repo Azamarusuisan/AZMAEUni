@@ -21,7 +21,7 @@ Create a personalized “note generator” on first use, then produce evidence-b
 - Keep claims traceable to URLs and dates. Do not invent facts, quotations, figures, or citations.
 - Save all local artifacts before browser mutation. Checkpoint a new draft URL before filling it.
 - Stop on an unknown page, non-note origin, CAPTCHA, MFA, consent screen, or an ambiguous UI target.
-- Report success only after observing the saved state and rereading the same draft.
+- Report success only after observing the saved state, rereading the same draft, and matching every required image and thumbnail in `cms-receipt.json`.
 - On native Windows, read `references/windows.md`, run `scripts/windows-doctor.ps1` before onboarding, use `scripts/manage.ps1` for manager commands, and use Chrome only. On WSL2 use the Linux flow and never mix Native Windows and WSL paths in one run.
 
 ## Resolve the workspace
@@ -52,7 +52,8 @@ Run the Doctor before onboarding and before every article run. Identify the curr
 2. If no browser is saved yet, ask for `chrome` or `safari`, then check only that provider.
 3. For Chrome, verify the current host's Chrome capability with the user's selected logged-in session.
 4. For Safari, verify macOS, the current host's semantic Computer Use capability, Safari availability, and required Accessibility/Screen Recording permissions.
-5. Record each check as `pass` or `fail` in the current run notes. On failure, show the exact missing capability and setup/retry steps, then stop.
+5. When the Brief requires images, verify that the selected browser control can send a run-local file to the current page. Treat image generation and browser file upload as separate capabilities. Do not create or modify a CMS draft merely to test upload.
+6. Record each check as `pass` or `fail` in the current run notes. On failure, show the exact missing capability and setup/retry steps, then stop.
 
 Never switch providers or fall back to another browser silently. Never claim a permission or connection passed from documentation alone; verify the live capability.
 
@@ -174,6 +175,7 @@ Before opening the note editor, ensure:
 - factual claims have source IDs and URLs;
 - requested links, images, alt text, thumbnail, and inline hashtags are present;
 - every upload path is inside the current run;
+- the selected browser's `browser_file_upload` capability is verified in the current session whenever the package contains a body image or thumbnail;
 - `validate` succeeds;
 - `article-package.json` and the final local article exist.
 - `article-package.json access.model` matches the Brief. A paid package contains the exact paywall heading and price proposal, `article.md` contains that heading, and `paid-plan.md` matches both.
@@ -193,10 +195,12 @@ Use the provider selected during onboarding. Do not silently fall back to the ot
 2. Run `verify-account --observed-handle <canonical-live-handle>` to compare it exactly with `.state/workspace.json.expected_account_handle`.
 3. If unequal, stop and ask the user to switch/login manually in the selected browser. Recheck; never switch automatically.
 4. Resume the checkpointed draft reference or URL when present. Otherwise create one new article and immediately checkpoint both available identifiers; keep the `new-run` idempotency key unchanged.
-5. Apply title, body, headings, lists, quotations, links, body images and alt text, thumbnail, and inline hashtags.
+5. Apply title, body, headings, lists, quotations, and links. Upload each required body image one at a time and observe that it appears at the planned position before sending the next file. Upload the thumbnail separately and observe its preview. Then apply inline hashtags.
 6. Save as draft. Never select a public/scheduled state.
 7. Observe the saved indicator, reopen or safely reread the same draft, and compare title, headings, links, images, thumbnail, hashtags, and a content fingerprint.
-8. Write `cms-receipt.json`. Use `verified` only when both checks pass; otherwise use `save_unverified`.
+8. Write schema 2 `cms-receipt.json`, including expected and observed body-image counts, the ordered run-relative paths actually verified in the editor, and the verified thumbnail path. Use `verified` only when every required item matches; otherwise list the missing items and use `save_unverified`.
+
+If browser file transfer is rejected after text has been applied, stop further uploads, keep the same checkpointed draft, write `browser_file_transfer_rejected` to the failure report, and checkpoint `stage`/`verify` as `save_unverified`. The first sentence to the user must say that the draft is incomplete and state how many images are missing. Do not headline the report with 「下書きを保存しました」, 「完了」, or 「確認済み」.
 
 For a paid article, CMS staging is allowed only in an attended `guided` run after the user confirms the price and paywall placement for this run. In `autopilot` or a scheduled run, finish the local article and `paid-plan.md`, checkpoint `waiting_user`, and do not mutate the CMS. The note adapter does not automate sales settings; do not imply that a locally completed paid article is already for sale.
 

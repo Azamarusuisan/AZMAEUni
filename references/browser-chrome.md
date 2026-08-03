@@ -6,6 +6,8 @@
 
 外部変更前に[agent compatibility](agent-compatibility.md)で現在hostのChrome capabilityを確認する。利用できなければnoteへ移動せず、[cms-note.mdの失敗報告](cms-note.md#失敗報告)を返す。
 
+画像を含むrunでは、Chrome接続と `browser_file_upload` を別々に確認する。画像生成が成功しても、connectorがローカルファイルを現在tabへ送信できる証拠にはならない。current tool documentationにupload操作が無い、permissionが拒否された、またはrun-local pathを渡せない場合はCMS変更前に停止する。
+
 ## 接続手順
 
 ### Codex
@@ -57,6 +59,8 @@ CSS class、XPath、DOM位置、固定座標、過去の観察から保持した
 - semantic targetが一意
 - action IDがnote adapterのallowlist内
 - 操作後の観察が期待状態と一致
+
+file uploadは一件ずつ実行し、note上に画像blockまたはthumbnail previewが現れたことをfresh observationで確認する。送信結果だけで成功にせず、拒否されたら同じdraftを保持して `browser_file_transfer_rejected` として停止する。Chromeの通常profileや拡張の権限を無断で変更しない。
 
 未知画面、公開関連画面、MFA、CAPTCHA、利用規約同意、許可外originでは停止する。DOM全文、screenshot、認証状態は既定で永続化しない。
 

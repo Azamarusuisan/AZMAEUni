@@ -110,8 +110,9 @@ WindowsではSafariへfallbackしない。Chrome接続に失敗したらCMS変�
 ローカルの`article.md`、画像、手動転記手順を残す。
 
 CodexのChrome PluginはGoogle Chromeだけが対象で、他のChromium browserは
-対応扱いにしない。ファイルuploadが必要な場合は、Chrome拡張の詳細で
-**Allow access to file URLs**を有効にし、新しいチャットで再確認する。
+対応扱いにしない。ファイルuploadは `browser_file_upload` としてChrome接続とは別に
+実機確認する。拡張の権限を無断で広げず、現在のPlugin documentationが特定の権限を
+要求する場合だけ利用者が内容を確認して変更する。
 
 ## Native WindowsとWSL2を混ぜない
 
@@ -169,6 +170,17 @@ checkoutとworkspaceを上記の短い既定パスへ置く。`windows-doctor.ps
 
 すべてのパスをPowerShellでダブルクォートする。`manage.ps1`とWindows CIでは、
 `購入者 環境`という日本語・空白入りworkspaceで`init`、`status`、`validate`を試験対象にする。
+
+### 画像は生成されたがChromeがファイル送信を拒否する
+
+本文だけの下書きを完了扱いにしない。runの `images` に対象ファイルがあり、
+`article-package.json` のpath、hash、MIME、寸法が一致することを確認する。次に現在の
+AgentとChrome Pluginがローカルファイルuploadを提供しているか、current documentationと
+permission promptで確認する。権限を回避したり、別profileへ自動で切り替えたりしない。
+
+復旧後は新しい記事を作らず、同じDraftRefを開いて不足画像だけを挿入する。再読時に
+期待画像数、観察画像数、`verified_image_paths`、thumbnailが一致した場合だけ
+`verified`へ進める。それまでは `save_unverified` のままにする。
 
 ### OneDriveでファイルが競合する
 
