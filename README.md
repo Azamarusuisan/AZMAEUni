@@ -93,6 +93,30 @@ GitHubリポジトリ:
 
 ## インストール
 
+### CodexへGitHub URLから入れる
+
+Codexでは、このリポジトリをskills-only Pluginとして追加できます。購入者は
+GitHubへのアクセス権を受け取ったあと、次のURLを含む2コマンドを実行します。
+macOS、Windows PowerShell、WSL2でコマンドは共通です。
+
+```bash
+codex plugin marketplace add https://github.com/Azamarusuisan/AZMAEUni.git --ref v0.1.0
+codex plugin add write-note-drafts@azmaeuni
+```
+
+Codexアプリを再起動し、新しいチャットで次のように依頼します。
+
+```text
+$write-note-drafts を使ってnoteを書いて
+```
+
+バージョン`v0.1.0`へ固定するため、開発途中の変更が購入者環境へ突然入ることは
+ありません。更新版へ切り替えるときだけ、案内された新しいrelease tagを指定します。
+GitHub URLへPersonal Access Tokenを埋め込まないでください。
+
+Claude CodeまたはHermesでも同じcheckoutを共有したい場合は、以下のclone方式を
+使用します。
+
 ### 1. GitHubへ認証する
 
 このリポジトリはprivateです。購入者または利用者には、事前にリポジトリへのアクセス権が必要です。

@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+"""Validate the URL-installable Codex plugin and marketplace package."""
+
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+PLUGIN_NAME = "write-note-drafts"
+RELEASE_REF = "v0.1.0"
+REPOSITORY_URL = "https://github.com/Azamarusuisan/AZMAEUni.git"
+SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
+
+
+def load_object(relative: str) -> dict[str, object]:
+    path = ROOT / relative
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict), f"{relative} must contain a JSON object"
+    return payload
+
+
+def main() -> int:
+    manifest = load_object(".codex-plugin/plugin.json")
+    marketplace = load_object(".agents/plugins/marketplace.json")
+
+    assert manifest.get("name") == PLUGIN_NAME
+    version = manifest.get("version")
+    assert isinstance(version, str) and SEMVER.fullmatch(version)
+    assert manifest.get("skills") == "./skills/"
+    interface = manifest.get("interface")
+    assert isinstance(interface, dict)
+    for field in (
+        "displayName",
+        "shortDescription",
+        "longDescription",
+        "developerName",
+        "category",
+        "defaultPrompt",
+    ):
+        assert interface.get(field), f"plugin interface.{field} is required"
+
+    entrypoint = ROOT / "skills" / PLUGIN_NAME / "SKILL.md"
+    assert entrypoint.is_file(), "plugin Skill entry point is missing"
+    canonical = ROOT / "SKILL.md"
+    assert canonical.is_file(), "canonical root SKILL.md is missing"
+    entrypoint_text = entrypoint.read_text(encoding="utf-8")
+    assert f"name: {PLUGIN_NAME}" in entrypoint_text
+    assert "../../SKILL.md" in entrypoint_text
+
+    assert marketplace.get("name") == "azmaeuni"
+    plugins = marketplace.get("plugins")
+    assert isinstance(plugins, list) and len(plugins) == 1
+    plugin = plugins[0]
+    assert isinstance(plugin, dict) and plugin.get("name") == PLUGIN_NAME
+    source = plugin.get("source")
+    assert isinstance(source, dict)
+    assert source == {
+        "source": "url",
+        "url": REPOSITORY_URL,
+        "ref": RELEASE_REF,
+    }
+    policy = plugin.get("policy")
+    assert policy == {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL",
+    }
+
+    print("distribution validation: passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

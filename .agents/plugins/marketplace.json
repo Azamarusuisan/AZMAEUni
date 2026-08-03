@@ -1,0 +1,21 @@
+{
+  "name": "azmaeuni",
+  "interface": {
+    "displayName": "Azamarusuisan"
+  },
+  "plugins": [
+    {
+      "name": "write-note-drafts",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/Azamarusuisan/AZMAEUni.git",
+        "ref": "v0.1.0"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
