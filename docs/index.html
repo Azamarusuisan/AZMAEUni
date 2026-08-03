@@ -561,7 +561,7 @@ gh version 2.x.x
     <p>Codexだけで使う場合は、Skillの置き場所を自分で決める必要はありません。購入者用GitHubへログインした状態で、次のURLを含む2コマンドを実行します。macOSとWindowsで同じです。</p>
     <div class="term install-command">
       <div class="term-bar"><i></i><i></i><i></i><span>Codex CLI — URLから追加</span></div>
-<pre><span class="c">codex plugin marketplace add https://github.com/Azamarusuisan/AZMAEUni.git --ref v0.1.0</span>
+<pre><span class="c">codex plugin marketplace add https://github.com/Azamarusuisan/AZMAEUni.git</span>
 <span class="c">codex plugin add write-note-drafts@azmaeuni</span></pre>
     </div>
     <ol class="steps">
@@ -571,7 +571,7 @@ gh version 2.x.x
     </ol>
     <div class="box">
       <span class="head">固定版を入れる理由</span>
-      <p><code>v0.1.0</code> は購入者向けに検証したrelease tagです。開発途中の変更は自動で入りません。更新時だけ、案内された新しいtagへ切り替えます。URLへPersonal Access Tokenを埋め込まないでください。</p>
+      <p>Plugin本体は購入者向けに検証したrelease tag <code>v0.1.0</code> へ固定されています。開発途中の変更は自動で入りません。更新時だけ、配布側が検証済みtagを切り替えます。URLへPersonal Access Tokenを埋め込まないでください。</p>
     </div>
 
     <h3>Claude Code／Hermesとも共有する</h3>
