@@ -401,7 +401,7 @@
   <div class="hero">
     <span class="eyebrow">一度育てて、何度でも使う</span>
     <h1>「noteを書いて」で、調査から未公開下書きの保存まで終わる。</h1>
-    <p class="lede">最初に好みと文体を教えれば、次からはテーマを一行伝えるだけ。記事、画像、出典を作り、保存後に同じ下書きを読み直して確認します。</p>
+    <p class="lede">最初に好みと文体を教えれば、次からはテーマを一行伝えるだけ。複数の情報源を調べ、無料または有料の記事、画像、出典を作り、保存後に同じ下書きを読み直して確認します。</p>
     <p class="byline"><span>macOS / Windows</span><span>Codex · Claude Code · Hermes</span><span>2026-08-03</span></p>
   </div>
 
@@ -409,6 +409,7 @@
     <summary>このマニュアルの目次</summary>
     <nav aria-label="モバイル目次">
       <a href="#outcome">結局、何ができるのか</a>
+      <a href="#research-paid">調査と有料記事</a>
       <a href="#image-examples">画像の完成例</a>
       <a href="#read">00 読み方</a>
       <a href="#prereq">01 前提チェック</a>
@@ -435,13 +436,13 @@
 
     <div class="request">
       <span class="request-label">あなたの依頼</span>
-      <blockquote>「○○について、私の文体でnoteを書いて」</blockquote>
+      <blockquote>「○○について調べて、私の文体で有料noteを書いて」</blockquote>
     </div>
 
     <ol class="work-path" aria-label="Skillが行う作業">
-      <li>調べる</li>
-      <li>構成する</li>
-      <li>書く</li>
+      <li>複数情報源を調査</li>
+      <li>無料／有料を設計</li>
+      <li>記事を書く</li>
       <li>画像を作る</li>
       <li>下書き保存</li>
       <li>読み直す</li>
@@ -453,6 +454,7 @@
         <strong>投稿直前まで整った未公開下書きと、検証できる制作一式。</strong>
         <ul class="deliverables" aria-label="成果物">
           <li>article.md</li>
+          <li>paid-plan.md</li>
           <li>画像</li>
           <li>出典一覧</li>
           <li>未公開下書き</li>
@@ -465,11 +467,11 @@
   <dl class="outcome-truth">
     <div class="truth-row">
       <dt>note</dt>
-      <dd><strong>下書き保存と保存後の再確認まで。</strong>公開はあなたが内容を読んでから行います。</dd>
+      <dd><strong>無料記事も有料記事も作れます。</strong>通常の下書きは保存後の再確認まで。有料記事の販売設定と公開はあなたが内容を読んでから行います。</dd>
     </div>
     <div class="truth-row brain">
       <dt>Brain</dt>
-      <dd><strong>記事と画像を作るところまで。</strong>編集画面の入力先と販売設定への動線は実機確認済みです。現行版では転記、価格・紹介率・有料ライン、保存を人が操作します。</dd>
+      <dd><strong>無料／有料の記事、画像、価格・紹介率・有料ライン案まで。</strong>現行版ではBrainへの転記、販売設定、保存を人が操作します。</dd>
     </div>
     <div class="truth-row stop">
       <dt>自動でしないこと</dt>
@@ -479,11 +481,47 @@
 
   <p class="start-links">
     <a href="#onboarding">どんなふうに育てるかを見る →</a>
+    <a href="#research-paid">調査と有料記事を見る →</a>
     <a href="#write">記事を1本書かせる流れを見る →</a>
     <a class="os-win" href="#windows">Windowsを診断する →</a>
     <a href="#install">インストールへ進む →</a>
     <a href="https://azamarusuisan.github.io/AZMAEUni/">公開URLを開く →</a>
   </p>
+
+  <section id="research-paid" aria-labelledby="research-paid-title">
+    <h2 id="research-paid-title">テーマ一行から、根拠のある無料／有料記事まで作れます。</h2>
+    <p><strong>結論：</strong>参考URLがなくても、記事で答えるべき問いを分け、官公庁・統計・論文・企業IR・技術文書・ニュース・動画・SNS・レビューなどから合う調査先を選びます。その結果を、全文無料の記事にも、無料部分と有料部分を持つ記事にもできます。</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>知りたいこと</th><th>調べる場所の例</th><th>記事での使い方</th></tr></thead>
+        <tbody>
+          <tr><td>法律・制度</td><td>e-Gov、所管省庁、自治体、国会会議録、海外の法令DB</td><td>現行ルールと施行日を確認</td></tr>
+          <tr><td>数値・市場</td><td>e-Stat、国際機関、業界団体、企業IR</td><td>定義、対象期間、母集団を付ける</td></tr>
+          <tr><td>研究・医療</td><td>J-STAGE、CiNii Research、PubMed、大学リポジトリ</td><td>原著、レビュー、preprintを区別</td></tr>
+          <tr><td>企業・技術</td><td>公式docs、EDINET、TDnet、SEC EDGAR、GitHub、release note</td><td>現行仕様、業績、変更履歴を確認</td></tr>
+          <tr><td>現場の声</td><td>YouTube、Podcast、SNS、Qiita、Zenn、note、Brain、レビュー</td><td>個人の経験として帰属を付ける</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>サイト数を増やすこと自体が目的ではありません。検索結果の要約だけで書かず、重要な主張は原文を開き、反対意見や限界も一度は確認します。</p>
+
+    <h3>有料記事で完成するもの</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>部分</th><th>入れる内容</th></tr></thead>
+        <tbody>
+          <tr><td>無料部分</td><td>向いている人／向いていない人、結論の全体像、根拠やサンプル、必要な費用・時間・リスク、有料部分の中身</td></tr>
+          <tr><td>有料部分</td><td>具体的な手順、判断基準、実例、テンプレート、チェックリスト、失敗したときの対処</td></tr>
+          <tr><td>販売案</td><td>価格案と理由、有料ラインを置く正確な見出し、必要な場合の紹介率案</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="box stop">
+      <span class="head">「書ける」と「販売中」は別です</span>
+      <p>Skillは有料部分まで書き切り、<code>paid-plan.md</code>へ販売案を残します。価格案は自動提案できますが、最終価格と有料ラインは記事ごとに本人確認が必要です。無人実行ではCMSを変更せず、公開・販売開始は常に人が行います。</p>
+    </div>
+  </section>
 
   <section class="proof" id="image-examples" aria-labelledby="image-examples-title">
     <h2 id="image-examples-title">文字入り画像も、記事の途中に入る図解も作れます。</h2>
@@ -641,7 +679,7 @@ git version 2.x.x
     </ol>
     <div class="box">
       <span class="head">固定版を入れる理由</span>
-      <p>Plugin本体は検証済みrelease tag <code>v0.2.0</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
+      <p>Plugin本体は検証済みrelease tag <code>v0.3.0</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
     </div>
 
     <h3>Claude Code／Hermesとも共有する</h3>
@@ -991,8 +1029,9 @@ templates/default.md   記事の型
 
     <ul class="flow">
       <li class="hi">依頼内容の確定</li>
-      <li>リサーチ</li>
-      <li>構成</li>
+      <li>調査先を選ぶ</li>
+      <li>根拠を集める</li>
+      <li>無料／有料を設計</li>
       <li>執筆</li>
       <li>画像</li>
       <li class="hi">プリフライト</li>
@@ -1007,12 +1046,21 @@ templates/default.md   記事の型
       <div class="msg"><span class="who">エージェント</span>リサーチ完了（12ソース）。構成を出します。…下書きを保存しました。再読検証は <code>verified</code>、下書き URL は https://note.com/… です。</div>
     </div>
 
+    <h3>有料記事の依頼例</h3>
+    <div class="chat">
+      <div class="msg you"><span class="who">あなた</span>「小規模チームが生成AIの社内ルールを作る手順」で有料noteを書いて。無料部分で向いている会社と全体像を示し、有料部分に質問票、導入手順、チェックリストを入れて。</div>
+      <div class="msg"><span class="who">エージェント</span>無料部分と有料部分を完成させ、価格案と有料ライン案を作ります。価格案は 980 円、ライン候補は「実際に使う質問票」の直前です。これは提案で、CMSへ進む前にそれぞれ確認します。</div>
+      <div class="msg you"><span class="who">あなた</span>記事と販売案を作って。CMSの販売設定はまだ触らないで。</div>
+      <div class="msg"><span class="who">エージェント</span><code>article.md</code> と <code>paid-plan.md</code> を完成しました。無料部分、有料部分、根拠、価格理由を確認できます。CMSは変更していません。</div>
+    </div>
+
     <h3>モード指定</h3>
     <div class="table-wrap">
       <table>
         <thead><tr><th>言い方</th><th>モード</th><th>どこまで</th></tr></thead>
         <tbody>
           <tr><td>「note 書いて」</td><td><code>full</code></td><td>下書き保存＋検証まで</td></tr>
+          <tr><td>「有料記事を書いて」</td><td><code>full + paid</code></td><td>無料／有料本文＋販売案。CMS設定前に本人確認</td></tr>
           <tr><td>「構成だけ見せて」</td><td><code>outline_only</code></td><td>構成で停止。CMS を触らない</td></tr>
           <tr><td>「この記事で文体を学習して」</td><td><code>learn_style</code></td><td><code>WRITING_PROFILE.md</code> の更新のみ</td></tr>
           <tr><td>「設定を変えたい」</td><td><code>setup</code></td><td>育成のやり直し</td></tr>
@@ -1023,9 +1071,10 @@ templates/default.md   記事の型
     <h3>途中で何が保存されるか</h3>
     <pre class="plainblock">runs/&lt;run-id&gt;/
 ├─ brief.json          確定した依頼内容と、各項目の出所
-├─ research.jsonl      1行1ソース（事実・引用候補・URL・公開日・取得日）
+├─ research.jsonl      1行1ソース（調査した問い・platform・役割・URL・日付）
 ├─ outline.md          本文より先に確定する構成
 ├─ article.md          本文
+├─ paid-plan.md        購入後の価値・有料ライン・価格案（有料記事だけ）
 ├─ image-plan.md       画像の用途・配置・プロンプト・サムネ文言・alt
 ├─ images/             生成画像
 └─ cms-receipt.json    保存結果（verified / save_unverified）</pre>
@@ -1097,7 +1146,7 @@ templates/default.md   記事の型
 
   <section id="brain">
     <h2><span class="num">08</span>Brain 記事への対応 <span class="chip dev">現行版は手動運用</span></h2>
-    <p><strong>結論：Brain 向けの記事と画像は作れますが、Brain への入力と保存は人が行います。</strong>実機でタイトル・本文・メイン画像の入力先、推奨画像サイズ、販売設定画面までの動線を確認しました。金額と公開範囲に関わる画面は自動操作の対象にしません。</p>
+    <p><strong>結論：Brain 向けの無料／有料記事、画像、価格・紹介率・有料ライン案は作れますが、Brain への入力と保存は人が行います。</strong>実機でタイトル・本文・メイン画像の入力先、推奨画像サイズ、販売設定画面までの動線を確認しました。金額と公開範囲に関わる画面は自動操作の対象にしません。</p>
 
     <div class="table-wrap">
       <table>
@@ -1105,8 +1154,9 @@ templates/default.md   記事の型
         <tbody>
           <tr><td>到達点</td><td>未公開下書きの保存・再読</td><td>ローカルの記事・画像＋手動入力</td></tr>
           <tr><td>アイキャッチ</td><td>1280×670 に正規化</td><td>1280×670（実機表示で確認）</td></tr>
-          <tr><td>有料ライン</td><td>扱わない</td><td>販売設定画面で人が決める</td></tr>
-          <tr><td>価格</td><td>扱わない</td><td>人が毎回確認・入力</td></tr>
+          <tr><td>有料記事の本文</td><td>無料／有料部分まで作成</td><td>無料／有料部分まで作成</td></tr>
+          <tr><td>有料ライン案</td><td>Skillが見出し位置を提案。CMS設定は人</td><td>Skillが見出し位置を提案。CMS設定は人</td></tr>
+          <tr><td>価格案</td><td>Skillが理由付きで提案。最終確認・設定は人</td><td>Skillが理由付きで提案。最終確認・入力は人</td></tr>
           <tr><td>紹介（アフィリエイト）率</td><td>—</td><td>人が毎回確認・入力</td></tr>
           <tr><td>公開／販売開始</td><td>行わない</td><td>行わない</td></tr>
         </tbody>
@@ -1143,7 +1193,7 @@ templates/default.md   記事の型
 
     <div class="box brainy">
       <span class="head">ここから先は人が操作</span>
-      <p>販売設定画面では、利用者本人が価格・紹介率・有料ラインを確認して入力します。Skill は過去記事や保存設定から金額を推測せず、販売開始も押しません。</p>
+      <p>Skillが作った価格案・紹介率案・有料ライン案を見ながら、販売設定画面では利用者本人が最終値を確認して入力します。過去記事や保存設定を確定値として流用せず、販売開始も押しません。</p>
     </div>
 
     <h3>規約と、そこから決めた制約</h3>
@@ -1228,7 +1278,7 @@ templates/default.md   記事の型
 
     <div class="box stop">
       <span class="head">無人実行でしないこと</span>
-      <p>公開・予約投稿・販売開始・<strong>価格と紹介率の確定</strong>・有料ライン位置の確定・アカウント切替・購入・権限変更。金額と公開範囲に関わる判断は無人では確定させません。Brain 記事の場合、価格と紹介率は未確定のまま残り、実行レポートに「人の確認待ち」として記録されます。</p>
+      <p>公開・予約投稿・販売開始・<strong>価格と紹介率の確定</strong>・有料ライン位置の確定・アカウント切替・購入・権限変更。有料記事の本文と販売案はローカルに完成させますが、金額と公開範囲に関わる判断は無人では確定せず、CMSを変更しません。実行レポートに「人の確認待ち」として記録されます。</p>
     </div>
 
     <p>止めるときは <code>配信頻度: 手動</code> に戻します。ただし<strong>スケジューラ側の登録は残る</strong>ので、そちらの削除も忘れないでください。</p>
@@ -1247,6 +1297,9 @@ templates/default.md   記事の型
           <tr><td>Doctor／プリフライト／チェックポイント再開</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>文体学習（<code>WRITING_PROFILE.md</code>）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>ハンドル照合・調査ページの不信任扱い</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>問い別のマルチプラットフォーム調査ルーター</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>無料／有料記事、価格案、有料ライン案、<code>paid-plan.md</code></td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>有料記事の本人確認ゲート（無人実行はCMS手前で停止）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>アイキャッチ <code>1280×670</code> 正規化と実ファイル検査</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>定期実行（<code>schedule-prompt</code> ／ scheduler 中立）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>Brain のハンドル照合と価格・紹介率の確認契約</td><td><span class="chip ok">実装済み</span></td></tr>
@@ -1259,14 +1312,14 @@ templates/default.md   記事の型
     <h3>完成版として残した境界</h3>
     <ul class="plain">
       <li>Brain の記事制作はローカル成果物まで。CMS への転記と保存は人が行います。</li>
-      <li>価格・紹介率・有料ラインは金銭と公開範囲に関わるため、自動入力しません。</li>
+      <li>価格・紹介率・有料ラインは提案まで行います。CMSへの確定入力は金銭と公開範囲に関わるため自動化しません。</li>
       <li>販売設定画面の読み取り、保存後の再読、Brain アカウントの実画面照合は動作確認済みとは扱いません。</li>
     </ul>
 
     <h3>あえて入れなかったもの</h3>
     <ul class="plain">
       <li><strong>自動公開。</strong><span class="chip no">不採用</span> 会話上の同意 1 回でアカウントに公開が飛ぶ設計は無人実行と相性が悪すぎます。到達点は下書きのまま。</li>
-      <li><strong>note の有料記事・メンバー限定対応。</strong><span class="chip no">不採用</span> note adapter は allowlist で「販売設定画面へ遷移しない」を明示的に禁止しています。Brain の金銭設定も人の操作に限定します。</li>
+      <li><strong>有料記事の自動販売設定。</strong><span class="chip no">不採用</span> 有料記事の本文と販売案は作れますが、note adapter は販売設定画面へ遷移しません。Brain の金銭設定も人の操作に限定します。</li>
       <li><strong>サムネイルのモード分類。</strong><span class="chip no">不採用</span> <code>image-plan.md</code> と <code>ASSETS.md</code> が既に同じ範囲をカバーしており、増やすだけになります。取り込んだのは <code>1280×670</code> の正規化と実ファイル検査だけです。</li>
       <li><strong>コネクタ任せの CMS 連携。</strong><span class="chip no">不採用</span> 「対応ツールがあれば使う」方式は、無い環境ではローカル Markdown で終わります。ブラウザ操作に一本化しています。</li>
     </ul>
@@ -1296,7 +1349,7 @@ templates/default.md   記事の型
 
     <details>
       <summary>インストール時に「Azamarusuisanへログイン」と表示された</summary>
-      <p>古い <code>v0.1.0</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.2.0</code> はインストール時のGitHub認証を要求しません。</p>
+      <p>古い <code>v0.1.0</code>／<code>v0.2.0</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.0</code> はインストール時のGitHub認証を要求しません。</p>
     </details>
 
     <details>
@@ -1398,7 +1451,7 @@ templates/default.md   記事の型
     <h3>更新</h3>
     <div class="term os-mac">
       <div class="term-bar"><i></i><i></i><i></i><span>zsh — 更新</span></div>
-<pre><span class="c">cd ~/.agents/skills/write-note-drafts && git pull</span>
+<pre><span class="c">cd ~/.agents/skills/write-note-drafts &amp;&amp; git pull</span>
 <span class="c">python3 scripts/manage.py self-check</span>
 <span class="o">{ "self_check": "passed" }</span></pre>
     </div>
@@ -1422,6 +1475,7 @@ templates/default.md   記事の型
   <p class="toc-label">Contents</p>
   <ol>
     <li><a href="#outcome">結局、何ができるのか</a></li>
+    <li><a href="#research-paid">調査と有料記事</a></li>
     <li><a href="#image-examples">画像の完成例</a></li>
     <li><a href="#read">00 このマニュアルの読み方</a></li>
     <li><a href="#prereq">01 前提チェック</a></li>

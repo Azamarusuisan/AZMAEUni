@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN_NAME = "write-note-drafts"
-RELEASE_REF = "v0.2.0"
+RELEASE_REF = "v0.3.0"
 REPOSITORY_URL = "https://github.com/Azamarusuisan/AZMAEUni.git"
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 

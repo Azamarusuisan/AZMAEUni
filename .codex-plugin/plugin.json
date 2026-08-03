@@ -1,7 +1,7 @@
 {
   "name": "write-note-drafts",
-  "version": "0.2.0",
-  "description": "Research, write, illustrate, and save verified unpublished note article drafts.",
+  "version": "0.3.0",
+  "description": "Research across diverse platforms and create verified free or paid note article drafts.",
   "author": {
     "name": "Azamarusuisan",
     "url": "https://github.com/Azamarusuisan"
@@ -9,19 +9,19 @@
   "homepage": "https://azamarusuisan.github.io/AZMAEUni/",
   "repository": "https://github.com/Azamarusuisan/AZMAEUni",
   "license": "Proprietary",
-  "keywords": ["note", "writing", "research", "drafts", "japanese"],
+  "keywords": ["note", "writing", "research", "paid-articles", "drafts", "japanese"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Note Draft Pipeline",
-    "shortDescription": "note記事を調査から未公開下書きまで作成",
-    "longDescription": "渡されたURLの確認、文体学習、調査、構成、執筆、文字入り画像と記事内図解の生成、noteへの未公開下書き保存、保存後の再読検証までを一つの安全なワークフローで進めます。公開操作は行いません。",
+    "shortDescription": "複数情報源を調べ、無料／有料note記事を下書きまで作成",
+    "longDescription": "官公庁・論文・企業IR・ニュース・技術情報・SNSなどを問いに応じて調査し、文体学習、構成、無料／有料記事の執筆、価格・有料ライン案、文字入り画像と図解、noteへの未公開下書き保存、保存後の再読検証まで進めます。公開・販売開始は行いません。",
     "developerName": "Azamarusuisan",
     "category": "Productivity",
-    "capabilities": ["URL research", "Text image generation", "Browser drafting"],
+    "capabilities": ["Multi-platform research", "Free and paid article writing", "Text image generation", "Browser drafting"],
     "defaultPrompt": [
       "私の文体を学習して、noteの未公開下書きを作って",
-      "このテーマでnote記事を調査・執筆して下書き保存して",
-      "note記事の構成案だけ作って"
+      "このテーマを複数の情報源で調べ、note下書きにして",
+      "無料部分と有料部分があるnote記事を書いて"
     ],
     "brandColor": "#0F8A72"
   }

@@ -61,6 +61,8 @@ Onboarding is mandatory and resumable in both automation modes. Existing Markdow
 
 Use `構成確認: 依頼時のみ` for `autopilot`. Treat `autopilot` plus `構成確認: 毎回` as a conflict to resolve during onboarding or settings revision. An explicit request for structure-only review selects `outline_only`.
 
+Every article resolves `access.model` to `free` or `paid`. A paid article may be researched, written, illustrated, and preflighted in either automation mode. CMS staging is restricted to an attended `guided` run after separate current-run confirmations for the proposed price and exact paywall heading. `autopilot` and scheduled runs stop at `waiting_user` with a complete local article and `paid-plan.md`.
+
 ## Full article sequence
 
 ```mermaid
@@ -88,7 +90,7 @@ sequenceDiagram
   else autopilot
     O->>W: resolved Brief checkpoint, no confirmation pause
   end
-  O->>R: resolved scope and date range
+  O->>R: questions, source categories, scope and date range
   R-->>O: source records
   O->>W: research + outline checkpoint
   O->>O: write article and image plan
@@ -115,12 +117,12 @@ sequenceDiagram
 |---|---|
 | `doctor` | Common and selected-provider live checks pass |
 | `intake` | `guided`: required values and `confirmed_at`; `autopilot`: theme, required values, `resolved_at`, and no conflicts |
-| `research` | Each important factual point has a source or explicit gap |
-| `outline` | Title, headings, sources, quotes, and image positions exist; required outline confirmation is recorded before `draft` |
-| `draft` | Final article has no placeholders |
+| `research` | Each important factual point has a source or explicit gap; source records name platform, research question, and evidence role |
+| `outline` | Title, headings, sources, quotes, and image positions exist; paid outlines show the free/paid boundary; required outline confirmation is recorded before `draft` |
+| `draft` | Final article has no placeholders; paid runs include complete free and premium sections plus `paid-plan.md` |
 | `images` | Required files are in `runs/<id>/images/` with alt text |
 | `preflight` | Local package and asset validation pass |
-| `account_check` | Live handle exactly equals expected handle |
+| `account_check` | Live handle exactly equals expected handle; paid runs are attended `guided` and have current price/paywall confirmations |
 | `stage` | Draft URL is checkpointed and content applied |
 | `verify` | Saved indicator and safe reread both pass |
 

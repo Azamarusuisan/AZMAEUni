@@ -5,6 +5,7 @@
 - Distribute a blank Skill with no user-specific data.
 - Build one personalized note generator in an external Markdown workspace.
 - Keep article generation reproducible and resumable before touching note.
+- Produce complete free or paid article packages without coupling commercial decisions to one CMS.
 - Select Chrome or Safari without changing the article pipeline.
 - Permit note draft creation and updates only; provide no publish path.
 - Leave a complete local package when browser automation cannot continue.
@@ -43,6 +44,7 @@
     ├── research.jsonl
     ├── outline.md
     ├── article.md
+    ├── paid-plan.md             # paid articles only
     ├── image-plan.md
     ├── images/
     ├── article-package.json
@@ -63,7 +65,7 @@ The current supported agent is the orchestrator. Do not duplicate its research, 
 | `SKILL.md` | Mandatory onboarding and article workflow |
 | Workspace Markdown | Human-editable identity, style, defaults, assets, and template |
 | `manage.py` | Initialization, validation, run IDs, checkpoints, and asset lock |
-| Web tools | Research and source inspection |
+| Web tools | Question-based research and source inspection across the platform router |
 | Host image capability | Codex `imagegen`, a connected Claude image Skill/MCP, or Hermes `image_generate` |
 | Browser provider | Existing authenticated Chrome or Safari session |
 | note adapter reference | Allowed semantic note operations and verification |
@@ -79,6 +81,8 @@ flowchart LR
   R --> L[Outline]
   B --> L
   L --> A[Article]
+  B --> Q[Free or paid access plan]
+  Q --> A
   M --> A
   A --> I[Image plan]
   I --> G[Image Skill]

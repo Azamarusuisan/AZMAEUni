@@ -19,7 +19,7 @@ Read all six files before each article:
 | `NOTE_GENERATOR.md` | Master index, selected browser, and confirmed note identity |
 | `PROFILE.md` | Author context, purpose, readers, boundaries, brand |
 | `WRITING_PROFILE.md` | Observed style features from self-authored samples |
-| `OPERATING_RULES.md` | Automation, outline confirmation, research, image, SEO/AIO, CTA, and note defaults |
+| `OPERATING_RULES.md` | Automation, outline confirmation, research, free/paid access, image, SEO/AIO, CTA, and note defaults |
 | `ASSETS.md` | Approved local brand/reference assets |
 | `templates/default.md` | Reusable article shape |
 
@@ -122,6 +122,7 @@ The orchestrator adds:
 | `research.jsonl` | One source record per line |
 | `outline.md` | Title, headings, source/quote/image positions |
 | `article.md` | Final local article |
+| `paid-plan.md` | Paid promise, exact paywall heading, price proposal, and confirmation state; paid articles only |
 | `image-plan.md` | Purpose, prompt, placement, size, alt |
 | `article-package.json` | CMS-neutral manifest and content fingerprint |
 | `cms-receipt.json` | Draft URL and save verification |
@@ -133,7 +134,7 @@ Do not research or draft until the resolved Brief passes its automation gate. Th
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "run_id": "20260101T000000Z-topic",
   "mode": "full",
   "automation_mode": "autopilot",
@@ -148,7 +149,28 @@ Do not research or draft until the resolved Brief passes its automation gate. Th
     "include_overseas": false,
     "published_after": null,
     "published_before": null,
-    "depth": "standard"
+    "depth": "standard",
+    "questions": ["What must this article prove?"],
+    "source_categories": ["government", "academic", "corporate", "news"],
+    "preferred_platforms": ["auto"]
+  },
+  "access": {
+    "model": "paid",
+    "purchase_promise": "What the reader can do after purchase",
+    "free_preview_delivers": ["Audience fit and the method overview"],
+    "paid_section_delivers": ["Procedure", "Template", "Checklist"],
+    "paywall_after": "## この先で分かること",
+    "paywall_confirmed_at": null,
+    "price": {
+      "currency": "JPY",
+      "proposal": 980,
+      "rationale": "Includes a reusable procedure and template",
+      "confirmed_at": null
+    },
+    "referral_rate": {
+      "proposal_percent": null,
+      "confirmed_at": null
+    }
   },
   "images": {
     "count": 2,
@@ -174,6 +196,10 @@ Set `outline_confirmed_at` before drafting when the run's `outline_confirmation`
 
 `references` is a list of HTTPS URL strings or objects containing an HTTPS `url`. Credentials embedded in URLs are rejected. Open each supplied URL before claiming to have read it; record inaccessible pages as inaccessible rather than reconstructing their contents from a search result.
 
+`access.model` must resolve to `free` or `paid` in every run. The saved workspace default may be `ask_each_time`; it is not a resolved run value. For `paid`, the purchase promise, non-empty free and paid deliverables, exact paywall heading, positive integer price proposal, ISO currency code, and price rationale are required. The proposal can be generated before confirmation. CMS staging additionally requires an attended `guided` run plus current-run timestamps in `price.confirmed_at` and `paywall_confirmed_at`. General Brief or outline confirmation timestamps do not satisfy these commercial confirmations.
+
+Brief schema 2 introduces the required `access` object. An in-progress schema 1 Brief created by an older release and lacking `access` remains valid as a free article, so an update does not strand an existing run. New runs always write schema 2.
+
 ## Research record
 
 Each JSONL line has:
@@ -184,8 +210,11 @@ Each JSONL line has:
   "source_id": "src-001",
   "title": "Source title",
   "url": "https://example.com/",
+  "platform": "e-Stat",
   "publisher": "Publisher",
   "source_type": "official",
+  "evidence_role": "primary",
+  "research_question": "What is the latest official figure?",
   "language": "ja",
   "published_at": "2026-01-01",
   "date_status": "known",
@@ -200,7 +229,9 @@ Each JSONL line has:
 }
 ```
 
-Unknown publication dates remain unknown. Keep quotations short and include a page, heading, paragraph, or timestamp locator. Use YouTube, SNS, and note for attributable opinion; use primary sources for general factual claims where possible.
+Unknown publication dates remain unknown. Keep quotations short and include a page, heading, paragraph, or timestamp locator. `evidence_role` is `primary`, `analysis`, `discovery`, `experience`, or `counterpoint`. Use YouTube, SNS, reviews, and note for attributable opinion or experience; use primary sources for general factual claims where possible. Choose platforms by question using [research-platforms.md](research-platforms.md), not by mechanically searching every listed service.
+
+Schema 2 preflight requires every non-empty JSONL row to have a unique safe `source_id`, credential-free HTTPS `url`, non-empty `platform`, `source_type`, `research_question`, and `accessed_at`, an allowed `evidence_role`, and `access_status` of `read`, `inaccessible`, or `excluded`. This records inaccessible sources without pretending they were read. Schema 1 runs retain their older record shape for update compatibility.
 
 ## Article package
 
@@ -208,13 +239,18 @@ The package contains no browser selector or CMS-specific HTML:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "run_id": "run-id",
   "title": "Title",
   "body_path": "article.md",
   "headings": [],
   "links": [],
   "inline_hashtags": [],
+  "access": {
+    "model": "paid",
+    "paywall_after": "## この先で分かること",
+    "price": {"currency": "JPY", "proposal": 980}
+  },
   "images": [
     {
       "path": "images/diagram.png",
@@ -237,6 +273,8 @@ The package contains no browser selector or CMS-specific HTML:
 ```
 
 An image entry contains a run-relative path, MIME, SHA-256, kind, actual pixel dimensions, placement, alt text, and any supported claim IDs. Allowed kinds are `article`, `diagram`, `comparison`, `flow`, and `thumbnail`. When a rendered image contains text, include the exact `text` and set `text_verified` only after visually checking the final file character-for-character. Body-image count must exactly match `brief.json images.count`; a thumbnail is counted separately. note thumbnails must be exactly `1280x670`.
+
+The package `access.model` must equal the Brief. For paid articles, `paywall_after` and the price proposal must match the Brief, the exact heading must exist in `article.md`, and `paid-plan.md` must contain the same heading and amount. This proves that the paid article is structurally complete; it does not mean the CMS sale is active.
 
 ## Checkpoint and receipt
 
