@@ -52,6 +52,8 @@
 
 The package is safe to update or replace. Initialization never overwrites existing workspace Markdown. Passwords, browser cookies, tokens, and MFA codes remain in the user's browser or OS and are never copied into the workspace.
 
+The distributor identity applies only to GitHub package ownership. The package contains no default note handle, Google account, email address, Chrome profile, or authenticated browser session. Every new workspace begins with blank account fields and records only the current user's live note handle after that user confirms it. Never copy identity state between workspaces, machines, buyers, or test fixtures.
+
 ## Runtime responsibilities
 
 The current supported agent is the orchestrator. Do not duplicate its research, writing, image, or browser abilities in a custom framework.

@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Note Draft Pipeline — 導入・運用マニュアル</title>
+<meta name="description" content="テーマを一行渡すと、調査・構成・執筆・文字入り画像・noteの未公開下書き保存・再読確認まで進めるAgent Skillの導入マニュアル。">
+<link rel="canonical" href="https://azamarusuisan.github.io/AZMAEUni/">
+<meta property="og:title" content="Note Draft Pipeline — 導入・運用マニュアル">
+<meta property="og:description" content="『noteを書いて』から、文字入り画像と検証済みの未公開下書きまで。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://azamarusuisan.github.io/AZMAEUni/">
+<meta property="og:image" content="https://azamarusuisan.github.io/AZMAEUni/assets/generated-eyecatch-example.png">
 <script>
   // CSSの読込前にOSを確定し、macOS/Windows両方が一瞬見えるのを防ぐ。
   (function () {
@@ -207,6 +214,39 @@
   .start-links { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 18px; font-size: 13.5px; font-weight: 700; }
   .start-links a { text-decoration-thickness: 1px; }
 
+  /* ============ outcome image proof ============ */
+  .proof { padding-top: 46px; }
+  .proof > p { color: var(--ink-2); }
+  .proof-sheet {
+    margin: 24px 0 32px; border-block: 1px solid var(--rule); padding-block: 18px;
+  }
+  .proof-sheet + .proof-sheet { margin-top: 40px; }
+  .proof-kicker {
+    display: flex; justify-content: space-between; gap: 14px; margin-bottom: 10px;
+    color: var(--ink-3); font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+  }
+  .proof-media {
+    display: block; border: 1px solid var(--rule); background: var(--surface);
+    overflow: hidden; text-decoration: none;
+  }
+  .proof-media picture { display: block; }
+  .proof-media img { display: block; width: 100%; height: auto; }
+  .proof-sheet figcaption { margin-top: 12px; color: var(--ink-2); font-size: 13.5px; line-height: 1.75; }
+  .proof-facts { list-style: none; display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+  .proof-facts li {
+    border: 1px solid var(--rule); padding: 3px 9px; background: var(--surface);
+    color: var(--ink-2); font-family: var(--mono); font-size: 10.5px;
+  }
+  .public-url {
+    display: inline-block; max-width: 100%; overflow-wrap: anywhere;
+    font-family: var(--mono); font-size: 12.5px;
+  }
+  @media (max-width: 560px) {
+    .proof { padding-top: 42px; }
+    .proof-kicker { flex-direction: column; gap: 1px; }
+    .proof-sheet figcaption { font-size: 13px; }
+  }
+
   @media (max-width: 560px) {
     .shell { padding-inline: 16px; padding-bottom: 100px; }
     .hero { padding-top: 44px; }
@@ -362,13 +402,14 @@
     <span class="eyebrow">一度育てて、何度でも使う</span>
     <h1>「noteを書いて」で、調査から未公開下書きの保存まで終わる。</h1>
     <p class="lede">最初に好みと文体を教えれば、次からはテーマを一行伝えるだけ。記事、画像、出典を作り、保存後に同じ下書きを読み直して確認します。</p>
-    <p class="byline"><span>macOS / Windows</span><span>Codex · Claude Code · Hermes</span><span>2026-07-31</span></p>
+    <p class="byline"><span>macOS / Windows</span><span>Codex · Claude Code · Hermes</span><span>2026-08-03</span></p>
   </div>
 
   <details class="mobile-toc">
     <summary>このマニュアルの目次</summary>
     <nav aria-label="モバイル目次">
       <a href="#outcome">結局、何ができるのか</a>
+      <a href="#image-examples">画像の完成例</a>
       <a href="#read">00 読み方</a>
       <a href="#prereq">01 前提チェック</a>
       <a href="#which-git">02 入れるGit</a>
@@ -441,7 +482,48 @@
     <a href="#write">記事を1本書かせる流れを見る →</a>
     <a class="os-win" href="#windows">Windowsを診断する →</a>
     <a href="#install">インストールへ進む →</a>
+    <a href="https://azamarusuisan.github.io/AZMAEUni/">公開URLを開く →</a>
   </p>
+
+  <section class="proof" id="image-examples" aria-labelledby="image-examples-title">
+    <h2 id="image-examples-title">文字入り画像も、記事の途中に入る図解も作れます。</h2>
+    <p>画像生成へ丸投げせず、背景やビジュアルを作ったあとに確定した日本語を重ね、最終ファイルを一字ずつ確認します。記事内画像には、入れる場所とaltも一緒に記録します。</p>
+
+    <figure class="proof-sheet">
+      <div class="proof-kicker"><span>生成例 01 / アイキャッチ</span><span>1280 × 670 PNG</span></div>
+      <a class="proof-media" href="assets/generated-eyecatch-example.png" aria-label="文字入りアイキャッチ生成例を原寸で開く">
+        <picture>
+          <source type="image/webp" srcset="assets/generated-eyecatch-example.webp">
+          <img src="assets/generated-eyecatch-example.png" width="1280" height="670" loading="eager" alt="テーマを一行伝えると未公開下書きまで完成することを示した文字入りアイキャッチ生成例">
+        </picture>
+      </a>
+      <figcaption>背景は画像生成、見出しは決定論的に描画した例です。「テーマを一行伝える」「未公開下書きまで完成」の文字を最終PNG上で確認しています。画像を選ぶと原寸で開きます。</figcaption>
+      <ul class="proof-facts" aria-label="アイキャッチの検証内容">
+        <li>文字照合済み</li><li>1280×670</li><li>alt記録</li><li>公開操作なし</li>
+      </ul>
+    </figure>
+
+    <figure class="proof-sheet">
+      <div class="proof-kicker"><span>生成例 02 / 記事内図解</span><span>PC・スマートフォン別レイアウト</span></div>
+      <a class="proof-media" href="assets/url-to-article-flow.png" aria-label="URLから記事を作る図解を原寸で開く">
+        <picture>
+          <source media="(max-width: 560px)" type="image/webp" srcset="assets/url-to-article-flow-mobile.webp">
+          <source media="(max-width: 560px)" srcset="assets/url-to-article-flow-mobile.png">
+          <source type="image/webp" srcset="assets/url-to-article-flow.webp">
+          <img src="assets/url-to-article-flow.png" width="1200" height="675" loading="lazy" alt="参考URLを開き、内容と日付を確認して、構成・本文・文字入り画像へ変換する三段階の図解">
+        </picture>
+      </a>
+      <figcaption>URLを渡した場合はページを実際に開き、要点と日付を整理してから記事と画像へ反映します。開けなかったURLを「読んだ」とは扱いません。スマートフォンでは縦長版へ自動で切り替わります。</figcaption>
+      <ul class="proof-facts" aria-label="記事内図解の検証内容">
+        <li>本文内へ挿入</li><li>出典URLを保持</li><li>画像内文字を照合</li><li>モバイル版あり</li>
+      </ul>
+    </figure>
+
+    <div class="box">
+      <span class="head">このマニュアルの公開URL</span>
+      <p>購入者はファイルを探さず、次のURLを開くだけで最新版を読めます。<br><a class="public-url" href="https://azamarusuisan.github.io/AZMAEUni/">https://azamarusuisan.github.io/AZMAEUni/</a></p>
+    </div>
+  </section>
 
   <section id="read">
     <h2><span class="num">00</span>このマニュアルの読み方</h2>
@@ -463,9 +545,8 @@
 
     <div class="term os-mac">
       <div class="term-bar"><i></i><i></i><i></i><span>zsh — 前提チェック</span></div>
-<pre><span class="c">git --version; gh --version | head -1; python3 --version; node --version</span>
+<pre><span class="c">git --version; python3 --version; node --version</span>
 <span class="o">git version 2.50.1 (Apple Git-155)
-gh version 2.95.0 (2026-06-17)
 Python 3.9.6          </span><span class="e">← 3.10 未満。要対処</span><span class="o">
 v24.17.0</span></pre>
     </div>
@@ -473,10 +554,9 @@ v24.17.0</span></pre>
     <div class="term os-win">
       <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — 前提チェック</span></div>
 <pre><span class="c">$PSVersionTable.PSVersion</span>
-<span class="c">git --version; gh --version; py -0p</span>
+<span class="c">git --version; py -0p</span>
 <span class="o">PowerShell 5.1 または 7
 git version 2.x.x
-gh version 2.x.x
  -V:3.14 *        C:\Users\you\AppData\Local\Programs\Python\Python314\python.exe</span></pre>
     </div>
 
@@ -486,7 +566,7 @@ gh version 2.x.x
         <tbody>
           <tr><td><strong>Python 3.10+</strong></td><td>Skill 本体の管理スクリプト</td><td>Doctor が <code>blocked</code>。記事作成に進めない</td></tr>
           <tr><td>Git</td><td>Skill の取得・更新</td><td>インストール不可</td></tr>
-          <tr><td>GitHub CLI (<code>gh</code>)</td><td>プライベートリポジトリのクローン</td><td><code>git clone</code> で代替可（公開リポジトリなら不要）</td></tr>
+          <tr><td>GitHub CLI (<code>gh</code>)</td><td>配布者の管理作業だけ</td><td>購入者のインストールには不要</td></tr>
           <tr><td>Chrome + エージェントの拡張</td><td>note の下書き保存／Brain 編集画面の確認</td><td>CMS を操作できない。本文はローカルに残る</td></tr>
           <tr><td>画像生成 Skill / MCP</td><td>サムネイル・図解</td><td>CMS を触る前に停止する</td></tr>
         </tbody>
@@ -495,21 +575,12 @@ gh version 2.x.x
 
     <h3 class="os-mac">Python 3.10+ を用意する（macOS）</h3>
     <div class="os-mac">
-      <p>このマシンには既に <code>python3.11</code> が入っています（<code>/Users/stork/.local/bin/python3.11</code> / 3.11.15）。<code>python3</code> がまだ 3.9 を指しているだけなので、PATH の優先順位を直します。</p>
+      <p>まず <code>python3.11</code> が既にあるか確認します。あればその実体を使えます。無ければPython公式のmacOS版を入れてください。</p>
       <div class="term">
         <div class="term-bar"><i></i><i></i><i></i><span>zsh — Python を 3.11 に向ける</span></div>
-<pre><span class="c">which -a python3</span>
-<span class="o">/usr/bin/python3</span>
-
+<pre><span class="c">command -v python3.11</span>
 <span class="c">python3.11 --version</span>
-<span class="o">Python 3.11.15</span>
-
-<span class="o"># ~/.zshrc の末尾に追記して、~/.local/bin を優先させる</span>
-<span class="c">echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc</span>
-<span class="c">exec zsh -l</span>
-
-<span class="c">python3 --version</span>
-<span class="o">Python 3.11.15</span>   <span class="c">← これで OK</span></pre>
+<span class="o">Python 3.11.x</span>   <span class="c">← これで OK</span></pre>
       </div>
       <p>入っていない場合は <a href="https://www.python.org/downloads/macos/">python.org の macOS 版</a>を入れるのが確実です。PATH をいじりたくなければ、以降のコマンドの <code>python3</code> をすべて <code>python3.11</code> に読み替えても構いません。</p>
     </div>
@@ -520,7 +591,6 @@ gh version 2.x.x
       <div class="term">
         <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — インストールと確認</span></div>
 <pre><span class="c">winget install --id Git.Git -e</span>
-<span class="c">winget install --id GitHub.cli -e</span>
 <span class="c">winget install --id Python.Python.3.14 -e</span>
 <span class="c">winget install --id Google.Chrome -e</span>
 
@@ -528,7 +598,7 @@ gh version 2.x.x
 <span class="c">py -0p</span></pre>
       </div>
       <p>以降はPythonの版を固定せず、<strong><code>.\scripts\manage.ps1</code></strong> を使います。3.10〜3.14から利用可能な実体を選び、Microsoft Storeを開くだけの見せかけの <code>python.exe</code> は除外します。</p>
-      <p><code>winget</code> 自体が見つからない場合はWindowsを更新してApp Installerを入れるか、<a href="https://www.python.org/downloads/windows/">Python公式インストーラ</a>、Git、GitHub CLI、Google Chromeの各公式配布元を使います。</p>
+      <p><code>winget</code> 自体が見つからない場合はWindowsを更新してApp Installerを入れるか、<a href="https://www.python.org/downloads/windows/">Python公式インストーラ</a>、Git、Google Chromeの各公式配布元を使います。</p>
     </div>
   </section>
 
@@ -538,11 +608,11 @@ gh version 2.x.x
 
     <div class="term os-mac">
       <div class="term-bar"><i></i><i></i><i></i><span>zsh</span></div>
-<pre><span class="c">gh repo clone Azamarusuisan/AZMAEUni ~/.agents/skills/write-note-drafts</span></pre>
+<pre><span class="c">git clone https://github.com/Azamarusuisan/AZMAEUni.git ~/.agents/skills/write-note-drafts</span></pre>
     </div>
     <div class="term os-win">
       <div class="term-bar"><i></i><i></i><i></i><span>PowerShell</span></div>
-<pre><span class="c">gh repo clone Azamarusuisan/AZMAEUni "$env:USERPROFILE\.agents\skills\write-note-drafts"</span></pre>
+<pre><span class="c">git clone https://github.com/Azamarusuisan/AZMAEUni.git "$env:USERPROFILE\.agents\skills\write-note-drafts"</span></pre>
     </div>
 
     <dl class="spec">
@@ -558,7 +628,7 @@ gh version 2.x.x
     <h2><span class="num">03</span>インストール</h2>
 
     <h3>Codex — GitHub URLから入れる</h3>
-    <p>Codexだけで使う場合は、Skillの置き場所を自分で決める必要はありません。購入者用GitHubへログインした状態で、次のURLを含む2コマンドを実行します。macOSとWindowsで同じです。</p>
+    <p>Codexだけで使う場合は、Skillの置き場所を自分で決める必要はありません。公開GitHub URLなのでログインは不要です。次の2コマンドはmacOSとWindowsで共通です。</p>
     <div class="term install-command">
       <div class="term-bar"><i></i><i></i><i></i><span>Codex CLI — URLから追加</span></div>
 <pre><span class="c">codex plugin marketplace add https://github.com/Azamarusuisan/AZMAEUni.git</span>
@@ -571,7 +641,7 @@ gh version 2.x.x
     </ol>
     <div class="box">
       <span class="head">固定版を入れる理由</span>
-      <p>Plugin本体は購入者向けに検証したrelease tag <code>v0.1.0</code> へ固定されています。開発途中の変更は自動で入りません。更新時だけ、配布側が検証済みtagを切り替えます。URLへPersonal Access Tokenを埋め込まないでください。</p>
+      <p>Plugin本体は検証済みrelease tag <code>v0.2.0</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
     </div>
 
     <h3>Claude Code／Hermesとも共有する</h3>
@@ -581,7 +651,7 @@ gh version 2.x.x
     <div class="term os-mac">
       <div class="term-bar"><i></i><i></i><i></i><span>zsh — 本体の取得</span></div>
 <pre><span class="c">mkdir -p ~/.agents/skills</span>
-<span class="c">gh repo clone Azamarusuisan/AZMAEUni ~/.agents/skills/write-note-drafts</span>
+<span class="c">git clone https://github.com/Azamarusuisan/AZMAEUni.git ~/.agents/skills/write-note-drafts</span>
 <span class="o">Cloning into '/Users/you/.agents/skills/write-note-drafts'...
 remote: Enumerating objects: done.
 Receiving objects: 100% done.</span>
@@ -593,13 +663,13 @@ references/  scripts/     requirements-validation.txt</span></pre>
     <div class="term os-win">
       <div class="term-bar"><i></i><i></i><i></i><span>PowerShell — 本体の取得</span></div>
 <pre><span class="c">mkdir "$env:USERPROFILE\.agents\skills" -Force</span>
-<span class="c">gh repo clone Azamarusuisan/AZMAEUni "$env:USERPROFILE\.agents\skills\write-note-drafts"</span>
+<span class="c">git clone https://github.com/Azamarusuisan/AZMAEUni.git "$env:USERPROFILE\.agents\skills\write-note-drafts"</span>
 
 <span class="c">dir "$env:USERPROFILE\.agents\skills\write-note-drafts"</span>
 <span class="o">LICENSE  README.md  SKILL.md  agents  assets
 references  scripts  requirements-validation.txt</span></pre>
     </div>
-    <p><code>gh</code> が未認証なら <code>gh auth login</code> を先に実行します。公開リポジトリなら <code>git clone https://github.com/Azamarusuisan/AZMAEUni.git &lt;パス&gt;</code> でも同じです。</p>
+    <p>ここでGitHubログイン画面が出た場合は、コマンドが <code>gh repo clone</code> になっていないか確認してください。上記の <code>git clone</code> は匿名で取得でき、パスワードやTokenを入力しません。</p>
 
     <h3>Step 2 — エージェントから見えるようにする</h3>
 
@@ -1204,6 +1274,10 @@ templates/default.md   記事の型
 
   <section id="safety">
     <h2><span class="num">11</span>安全境界</h2>
+    <div class="box">
+      <span class="head">アカウントは購入者ごとに分離</span>
+      <p><code>Azamarusuisan</code> はGitHub上の配布者名だけです。配布物に販売者のnote handle、Googleアカウント、メール、Chromeプロファイルは入りません。購入者ごと・PCごとに空の設定から始め、現在その人が選んだブラウザセッションだけを確認します。</p>
+    </div>
     <ul class="plain">
       <li>公開・予約投稿・販売開始・アカウント自動切替は行いません。</li>
       <li>パスワード、Cookie、トークン、MFA コード、API キーを保存しません。</li>
@@ -1219,6 +1293,11 @@ templates/default.md   記事の型
   <section id="trouble">
     <h2><span class="num">12</span>止まったとき</h2>
     <p>失敗時は、フェーズ・原因・最後のチェックポイント・下書き URL・安全な再試行手順・手動手順・ローカルファイルのパスが表示されます。自動で再試行されるのは読み取り、待機、既存下書きへの更新だけで、<strong>新規下書きの作成は自動再試行しません</strong>（重複防止）。</p>
+
+    <details>
+      <summary>インストール時に「Azamarusuisanへログイン」と表示された</summary>
+      <p>古い <code>v0.1.0</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.2.0</code> はインストール時のGitHub認証を要求しません。</p>
+    </details>
 
     <details>
       <summary>self-check が AssertionError で落ちる</summary>
@@ -1343,6 +1422,7 @@ templates/default.md   記事の型
   <p class="toc-label">Contents</p>
   <ol>
     <li><a href="#outcome">結局、何ができるのか</a></li>
+    <li><a href="#image-examples">画像の完成例</a></li>
     <li><a href="#read">00 このマニュアルの読み方</a></li>
     <li><a href="#prereq">01 前提チェック</a></li>
     <li><a href="#which-git">02 どの Git を入れるのか</a></li>

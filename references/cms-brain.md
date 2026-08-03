@@ -30,7 +30,7 @@ Brainは有料記事の販売と紹介機能を持つため、noteに無い次�
 
 現時点でBrainエディタに対するsemantic observationの検証が完了していない。検証が完了するまで、このadapterは次のように振る舞う。
 
-1. Brain経路が要求された時点で能力確認を行い、確認できない場合は `brain_adapter_unavailable` を返して停止する。
+1. Brain経路が要求された時点で `doctor --target brain --browser <chrome|safari>` を実行し、`brain_semantic_observation` を実機で確認する。確認できない場合は `brain_adapter_unavailable` を返して停止する。
 2. ローカルの `article.md`、画像、`image-plan.md` を完成させた状態で保持する。
 3. 利用者へ手動の貼り付け手順を提示する。手順には title、本文、見出し、リンク、画像順、アイキャッチ、有料ラインの位置候補を含める。価格と紹介率は利用者が決める項目として空欄で示す。
 

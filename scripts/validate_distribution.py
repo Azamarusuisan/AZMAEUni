@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN_NAME = "write-note-drafts"
-RELEASE_REF = "v0.1.0"
+RELEASE_REF = "v0.2.0"
 REPOSITORY_URL = "https://github.com/Azamarusuisan/AZMAEUni.git"
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
@@ -50,6 +50,18 @@ def main() -> int:
     assert f"name: {PLUGIN_NAME}" in entrypoint_text
     assert "../../SKILL.md" in entrypoint_text
 
+    account_template = (ROOT / "assets/workspace-template/NOTE_GENERATOR.md").read_text(
+        encoding="utf-8"
+    )
+    for field in ("アカウント名", "note URL", "note handle"):
+        assert re.search(
+            rf"(?m)^- {re.escape(field)}:\s*$", account_template
+        ), f"distributed account field must remain blank: {field}"
+    assert not re.search(
+        r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", account_template, re.I
+    ), "distributed account template must not contain an email address"
+    assert "Azamarusuisan" not in account_template
+
     assert marketplace.get("name") == "azmaeuni"
     plugins = marketplace.get("plugins")
     assert isinstance(plugins, list) and len(plugins) == 1
@@ -65,7 +77,7 @@ def main() -> int:
     policy = plugin.get("policy")
     assert policy == {
         "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL",
+        "authentication": "ON_USE",
     }
 
     print("distribution validation: passed")

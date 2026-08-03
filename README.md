@@ -20,13 +20,15 @@ GitHubリポジトリ:
 
 <https://github.com/Azamarusuisan/AZMAEUni>
 
-図解付きの導入・運用マニュアル: [docs/index.html](docs/index.html)
+図解付きの導入・運用マニュアル: <https://azamarusuisan.github.io/AZMAEUni/>
 
 ## 重要事項
 
 - noteには本Skillが利用できる公式投稿APIがないため、ChromeまたはSafariを操作します。
 - Gitからインストールしただけでは、ヒアリング画面は自動表示されません。最初のnote作成依頼で育成が始まります。
 - 対象は選択したブラウザで現在ログイン中のnoteアカウントだけです。
+- `Azamarusuisan`はGitHub上の配布者名だけです。配布物に販売者のnote handle、Googleアカウント、メール、Chromeプロファイルは含めません。
+- 購入者ごと・PCごとに空のワークスペースから開始し、その人が選んだブラウザセッションだけを確認します。別ユーザーの確認済みhandleを流用しません。
 - パスワード、Cookie、MFAコード、セッショントークンは保存しません。
 - 公開、予約投稿、販売設定、アカウント自動切替は行いません。
 - 最終地点は「下書き保存と再読検証」です。公開ボタンは操作しません。
@@ -42,11 +44,12 @@ GitHubリポジトリ:
 | noteアカウント確認 | ログイン中のcanonical handleを確認して保存 |
 | 文体学習 | 本人が執筆した記事だけを読み、Writing Profileを作成 |
 | 差分ヒアリング | 保存済み設定を再質問せず、未解決・矛盾・高リスク項目だけ質問 |
+| URLからリサーチ | 渡されたHTTPS URLを実際に開き、要点・日付・出典を記事へ紐づけ。開けないURLは未読として報告 |
 | リサーチ | 公式サイト、企業ブログ、ニュース、論文、海外記事、YouTube、SNS、noteなどを調査 |
 | 構成作成 | タイトル、見出し、画像位置、引用位置を本文より先に決定 |
 | 本文執筆 | 読みやすさ、SEO、AIO、読了率、SNS共有を考慮 |
 | 画像生成 | サムネイル、記事内画像、図解、比較図、フロー図を生成 |
-| 文字入りサムネイル | 確定文言を記録し、画像内文字を一字ずつ照合 |
+| 文字入り画像 | サムネイルと本文画像の確定文言を記録し、最終ファイル上で一字ずつ照合 |
 | note入力 | タイトル、本文、見出し、リンク、画像、サムネイル、本文内ハッシュタグを設定 |
 | 下書き保存 | 公開せず、同じ下書きを再読して保存結果を確認 |
 | 再開 | 保存済みDraftRefを使い、重複下書きを作らず途中から再開 |
@@ -95,8 +98,8 @@ GitHubリポジトリ:
 
 ### CodexへGitHub URLから入れる
 
-Codexでは、このリポジトリをskills-only Pluginとして追加できます。購入者は
-GitHubへのアクセス権を受け取ったあと、次のURLを含む2コマンドを実行します。
+Codexでは、この公開リポジトリをskills-only Pluginとして追加できます。
+GitHubへのログインは不要です。次のURLを含む2コマンドを実行します。
 macOS、Windows PowerShell、WSL2でコマンドは共通です。
 
 ```bash
@@ -110,7 +113,7 @@ Codexアプリを再起動し、新しいチャットで次のように依頼し
 $write-note-drafts を使ってnoteを書いて
 ```
 
-marketplace側でバージョン`v0.1.0`へ固定するため、開発途中の変更が購入者環境へ
+marketplace側でバージョン`v0.2.0`へ固定するため、開発途中の変更が購入者環境へ
 突然入ることはありません。更新版へ切り替えるときだけ、配布側が検証済みrelease
 tagを更新します。
 GitHub URLへPersonal Access Tokenを埋め込まないでください。
@@ -118,32 +121,22 @@ GitHub URLへPersonal Access Tokenを埋め込まないでください。
 Claude CodeまたはHermesでも同じcheckoutを共有したい場合は、以下のclone方式を
 使用します。
 
-### 1. GitHubへ認証する
+### 1. 共通ディレクトリへcloneする
 
-このリポジトリはprivateです。購入者または利用者には、事前にリポジトリへのアクセス権が必要です。
-
-GitHub CLIを利用する場合:
-
-```bash
-gh auth login
-```
-
-Personal Access Tokenをclone URL、Skill設定、プロフィールへ直接書かないでください。
-
-### 2. 共通ディレクトリへcloneする
-
-Codex、Claude Code、Hermes Agentで同じcheckoutを共有できます。
+Codex、Claude Code、Hermes Agentで同じcheckoutを共有できます。公開URLを
+`git clone`するため、GitHubアカウント、Personal Access Token、販売者アカウントへの
+ログインは不要です。
 
 ```bash
 mkdir -p "$HOME/.agents/skills"
-gh repo clone Azamarusuisan/AZMAEUni "$HOME/.agents/skills/write-note-drafts"
+git clone https://github.com/Azamarusuisan/AZMAEUni.git "$HOME/.agents/skills/write-note-drafts"
 ```
 
 Windows PowerShell:
 
 ```powershell
 New-Item -ItemType Directory -Force "$env:USERPROFILE\.agents\skills" | Out-Null
-gh repo clone Azamarusuisan/AZMAEUni "$env:USERPROFILE\.agents\skills\write-note-drafts"
+git clone https://github.com/Azamarusuisan/AZMAEUni.git "$env:USERPROFILE\.agents\skills\write-note-drafts"
 Set-Location "$env:USERPROFILE\.agents\skills\write-note-drafts"
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File .\scripts\windows-doctor.ps1 -Agent codex -Target note
@@ -155,7 +148,7 @@ Windowsでは`py -3.11`のように版を固定せず、以後の管理コマン
 
 すでに同名のパスが存在する場合は、上書きせず内容を確認してください。
 
-### 3. Agentごとの認識設定
+### 2. Agentごとの認識設定
 
 #### Codex
 
