@@ -1,7 +1,7 @@
 {
   "name": "write-note-drafts",
-  "version": "0.3.2",
-  "description": "Inspect portable article packages, research diverse sources, and create verified free or paid note drafts.",
+  "version": "0.3.3",
+  "description": "Research Japanese, English, and Chinese sources and create verified free or paid note drafts.",
   "author": {
     "name": "Azamarusuisan",
     "url": "https://github.com/Azamarusuisan"
@@ -9,18 +9,19 @@
   "homepage": "https://azamarusuisan.github.io/AZMAEUni/",
   "repository": "https://github.com/Azamarusuisan/AZMAEUni",
   "license": "Proprietary",
-  "keywords": ["note", "writing", "research", "paid-articles", "drafts", "japanese"],
+  "keywords": ["note", "writing", "research", "reddit", "baidu", "paid-articles", "drafts", "japanese"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Note Draft Pipeline",
-    "shortDescription": "記事ZIPも検査し、無料／有料note記事を下書きまで作成",
-    "longDescription": "別PCの記事フォルダ／ZIPを安全に検査・取り込みでき、官公庁・論文・企業IR・ニュース・技術情報・SNSなどを問いに応じて調査し、文体学習、構成、無料／有料記事の執筆、価格・有料ライン案、文字入り画像と図解、noteへの未公開下書き保存、保存後の再読検証まで進めます。公開・販売開始は行いません。",
+    "shortDescription": "日英中の情報を調べ、無料／有料note記事を下書きまで作成",
+    "longDescription": "日本のnote、英語圏のReddit、Baiduを入口にした中国語圏を、官公庁・論文・企業IR・ニュース・技術情報と照合して調査します。記事フォルダ／ZIPの検査、文体学習、無料／有料記事、価格・有料ライン案、文字入り画像、noteへの未公開下書き保存と再読検証まで進めます。公開・販売開始は行いません。",
     "developerName": "Azamarusuisan",
     "category": "Productivity",
-    "capabilities": ["Portable source-package inspection", "Multi-platform research", "Free and paid article writing", "Verified image drafting"],
+    "capabilities": ["Japanese/English/Chinese research", "Portable source-package inspection", "Free and paid article writing", "Verified image drafting"],
     "defaultPrompt": [
       "私の文体を学習して、noteの未公開下書きを作って",
       "このテーマを複数の情報源で調べ、note下書きにして",
+      "日本のnote、Reddit、中国語圏も調べてnote記事を書いて",
       "無料部分と有料部分があるnote記事を書いて",
       "このフォルダまたはZIPの本文と画像を検査してnote下書きにして"
     ],

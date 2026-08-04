@@ -1,7 +1,7 @@
 interface:
   display_name: "Note Draft Pipeline"
-  short_description: "記事ZIPも検査し、無料／有料note記事を安全に下書き保存"
-  default_prompt: "Use $write-note-drafts to inspect any supplied article folder or ZIP, research my topic across suitable platforms, create a free or paid article with verified images, then save and reread one unpublished note draft."
+  short_description: "日英中の情報を調べ、無料／有料note記事を安全に下書き保存"
+  default_prompt: "Use $write-note-drafts to inspect supplied article files, research official sources plus Japanese note, Reddit, and Baidu/Chinese-language sources when relevant, create a free or paid article with verified images, then save and reread one unpublished note draft."
 
 policy:
   allow_implicit_invocation: true

@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN_NAME = "write-note-drafts"
-RELEASE_REF = "v0.3.2"
+RELEASE_REF = "v0.3.3"
 REPOSITORY_URL = "https://github.com/Azamarusuisan/AZMAEUni.git"
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
@@ -61,6 +61,22 @@ def main() -> int:
         r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", account_template, re.I
     ), "distributed account template must not contain an email address"
     assert "Azamarusuisan" not in account_template
+
+    research_router = (ROOT / "references/research-platforms.md").read_text(
+        encoding="utf-8"
+    )
+    for required_platform in (
+        "日本のnote",
+        "Reddit",
+        "Baidu Search",
+        "百度贴吧",
+        "中国政府网",
+        "original_title",
+        "translation_notes",
+    ):
+        assert required_platform in research_router, (
+            f"research router is missing {required_platform}"
+        )
 
     assert marketplace.get("name") == "azmaeuni"
     plugins = marketplace.get("plugins")

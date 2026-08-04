@@ -173,6 +173,8 @@ Do not research or draft until the resolved Brief passes its automation gate. Th
   "references": [],
   "research": {
     "include_overseas": false,
+    "regions": ["JP"],
+    "community_lenses": ["auto"],
     "published_after": null,
     "published_before": null,
     "depth": "standard",
@@ -235,6 +237,7 @@ Each JSONL line has:
   "schema_version": 1,
   "source_id": "src-001",
   "title": "Source title",
+  "original_title": "Original source title",
   "url": "https://example.com/",
   "platform": "e-Stat",
   "publisher": "Publisher",
@@ -242,6 +245,7 @@ Each JSONL line has:
   "evidence_role": "primary",
   "research_question": "What is the latest official figure?",
   "language": "ja",
+  "query_language": "ja",
   "published_at": "2026-01-01",
   "date_status": "known",
   "accessed_at": "2026-01-02T00:00:00+00:00",
@@ -249,13 +253,15 @@ Each JSONL line has:
   "facts": [],
   "figures": [],
   "quote_candidates": [],
+  "original_quote_candidates": [],
   "key_points": [],
+  "translation_notes": [],
   "access_status": "read",
   "conflicts": []
 }
 ```
 
-Unknown publication dates remain unknown. Keep quotations short and include a page, heading, paragraph, or timestamp locator. `evidence_role` is `primary`, `analysis`, `discovery`, `experience`, or `counterpoint`. Use YouTube, SNS, reviews, and note for attributable opinion or experience; use primary sources for general factual claims where possible. Choose platforms by question using [research-platforms.md](research-platforms.md), not by mechanically searching every listed service.
+Unknown publication dates remain unknown. Keep quotations short and include a page, heading, paragraph, or timestamp locator. `evidence_role` is `primary`, `analysis`, `discovery`, `experience`, or `counterpoint`. Use YouTube, SNS, reviews, note, Reddit, and Baidu-hosted communities for attributable opinion, local terminology, discovery, or experience; use primary sources for general factual claims where possible. For non-Japanese sources, keep the original title and short original-language quotation separate from the Japanese summary and translation notes. Choose platforms by question using [research-platforms.md](research-platforms.md), not by mechanically searching every listed service.
 
 Schema 2 preflight requires every non-empty JSONL row to have a unique safe `source_id`, credential-free HTTPS `url`, non-empty `platform`, `source_type`, `research_question`, and `accessed_at`, an allowed `evidence_role`, and `access_status` of `read`, `inaccessible`, or `excluded`. This records inaccessible sources without pretending they were read. Schema 1 runs retain their older record shape for update compatibility.
 
