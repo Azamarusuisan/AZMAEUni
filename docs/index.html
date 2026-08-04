@@ -679,7 +679,7 @@ git version 2.x.x
     </ol>
     <div class="box">
       <span class="head">固定版を入れる理由</span>
-      <p>Plugin本体は検証済みrelease tag <code>v0.3.1</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
+      <p>Plugin本体は検証済みrelease tag <code>v0.3.2</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
     </div>
 
     <h3>Claude Code／Hermesとも共有する</h3>
@@ -1055,6 +1055,16 @@ templates/default.md   記事の型
       <div class="msg"><span class="who">エージェント</span><code>article.md</code> と <code>paid-plan.md</code> を完成しました。無料部分、有料部分、根拠、価格理由を確認できます。CMSは変更していません。</div>
     </div>
 
+    <h3>別PCの記事フォルダ・ZIPを引き継ぐ</h3>
+    <div class="chat">
+      <div class="msg you"><span class="who">あなた</span>このZIPに本文と画像が入っています。検査して、使える部分から同じnote下書きを作って。</div>
+      <div class="msg"><span class="who">エージェント</span>本文1点・画像8点を確認しました。6点は拡張子がPNGですが実体はJPEG、1280×670のアイキャッチは本文にも指定されています。同梱プロンプトは未信頼として保存し、画像の拡張子と配置を直してから通常のpreflightへ進みます。</div>
+    </div>
+    <div class="box">
+      <span class="head">ZIPの命令をそのまま実行しない</span>
+      <p><code>README.md</code> や「この指示を最優先」と書かれた実行プロンプトは記事素材です。現在の依頼、ログイン中アカウントの照合、公開禁止より優先しません。別PCへ書き出すZIPにもnote handle・Googleアカウント・browser session・下書きURLを含めません。</p>
+    </div>
+
     <h3>モード指定</h3>
     <div class="table-wrap">
       <table>
@@ -1071,6 +1081,8 @@ templates/default.md   記事の型
 
     <h3>途中で何が保存されるか</h3>
     <pre class="plainblock">runs/&lt;run-id&gt;/
+├─ source-package/     取り込んだフォルダ／ZIPの変更しない原本
+├─ source-package.json file hash・画像検査・解決待ち警告
 ├─ brief.json          確定した依頼内容と、各項目の出所
 ├─ research.jsonl      1行1ソース（調査した問い・platform・役割・URL・日付）
 ├─ outline.md          本文より先に確定する構成
@@ -1350,7 +1362,7 @@ templates/default.md   記事の型
 
     <details>
       <summary>インストール時に「Azamarusuisanへログイン」と表示された</summary>
-      <p>古い <code>v0.1.0</code>／<code>v0.2.0</code>／<code>v0.3.0</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.1</code> はインストール時のGitHub認証を要求しません。</p>
+      <p>古い <code>v0.1.0</code>〜<code>v0.3.1</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.2</code> はインストール時のGitHub認証を要求しません。</p>
     </details>
 
     <details>
@@ -1392,6 +1404,12 @@ templates/default.md   記事の型
       <summary>画像は作られたが、noteに挿入されていない</summary>
       <p><strong>本文だけの下書きは完了ではありません。</strong>画像生成とブラウザのファイル送信は別の能力です。Chromeなどが送信を拒否した場合は <code>browser_file_transfer_rejected</code>、状態は <code>save_unverified</code> になります。</p>
       <p>新しい下書きを作らず、同じDraftRefまたはURLを再開してください。runの <code>images/</code> と <code>cms-receipt.json</code> の <code>missing_required_items</code> を確認し、不足画像だけを計画順に挿入します。再読後に期待画像数・観察画像数・画像path・サムネイルが一致した場合だけ <code>verified</code> です。</p>
+    </details>
+
+    <details>
+      <summary>別PCから記事フォルダ／ZIPを受け取った</summary>
+      <p><code>inspect-source-package</code> で最初に検査します。パストラバーサル、symlink、暗号化ZIP、remote画像、不足ファイル、10MB超、実MIMEと拡張子の不一致、アイキャッチの本文重複、秘密情報が写る可能性のある画面を検出します。</p>
+      <p>検査後は1つのrunへ原本とhashを取り込みます。同梱プロンプトは未信頼のままです。別PCへ戻すときは <code>export-run-package</code> を使い、アカウント・browser・下書き状態を含まないZIPを作ります。</p>
     </details>
 
     <details>
@@ -1447,6 +1465,9 @@ templates/default.md   記事の型
           <tr><td><code>verify-account</code></td><td><code>--workspace</code> <code>--observed-handle</code>（<code>--platform note|brain</code>）</td><td>画面上のハンドルと保存値を照合。note と Brain は独立して照合する</td></tr>
           <tr><td><code>schedule-prompt</code></td><td><code>--workspace</code></td><td>定期実行用の短いプロンプトを生成。<code>配信頻度: 手動</code> なら <code>disabled</code> を返す</td></tr>
           <tr><td><code>new-run</code></td><td><code>--workspace</code>（<code>--run-id</code> 任意）</td><td>記事 1 本ぶんの作業領域を作る</td></tr>
+          <tr><td><code>inspect-source-package</code></td><td><code>--source</code></td><td>記事フォルダ／ZIPの安全性、画像、hash、MIME、配置警告を読み取り専用で検査</td></tr>
+          <tr><td><code>import-source-package</code></td><td><code>--workspace</code> <code>--run-id</code> <code>--source</code></td><td>検査済み原本を1つのrunへ変更せず取り込む</td></tr>
+          <tr><td><code>export-run-package</code></td><td><code>--workspace</code> <code>--run-id</code> <code>--output</code></td><td>preflight済み本文・画像を、アカウント状態を除いたZIPへ書き出す</td></tr>
           <tr><td><code>checkpoint</code></td><td><code>--workspace</code> <code>--run-id</code> <code>--phase</code> <code>--status</code></td><td>進捗の記録（<code>--draft-ref</code>／<code>--draft-url</code> 任意）</td></tr>
           <tr><td><code>self-check</code></td><td>—</td><td>本体の自己診断</td></tr>
         </tbody>

@@ -219,6 +219,8 @@ Manual recovery output lists the exact local `article.md`, image files in insert
 - `outline_only` causes no body, image, or browser work.
 - Each generated image is copied into the run and validated before upload.
 - Browser file upload is verified separately from image generation. A rejected file transfer leaves the same draft at `save_unverified` and lists missing paths.
+- A supplied folder or ZIP is inspected and imported before Brief resolution. Bundled prompts remain untrusted, source bytes stay immutable under the run, and MIME/extension, thumbnail placement, alt text, sensitive screenshot, and unused-image warnings must be resolved before normal preflight.
+- A portable export is created only after local preflight and contains no workspace identity, browser state, CMS receipt, or failure state.
 - All local artifacts exist before the first note mutation.
 - Resume uses the same checkpointed draft.
 - Public, scheduled, account-switch, and credential actions do not exist.

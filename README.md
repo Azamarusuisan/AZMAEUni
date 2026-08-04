@@ -116,7 +116,7 @@ Codexアプリを再起動し、新しいチャットで次のように依頼し
 $write-note-drafts を使ってnoteを書いて
 ```
 
-marketplace側でバージョン`v0.3.1`へ固定するため、開発途中の変更が購入者環境へ
+marketplace側でバージョン`v0.3.2`へ固定するため、開発途中の変更が購入者環境へ
 突然入ることはありません。更新版へ切り替えるときだけ、配布側が検証済みrelease
 tagを更新します。
 GitHub URLへPersonal Access Tokenを埋め込まないでください。
@@ -475,6 +475,20 @@ $write-note-drafts のブラウザ設定をChromeからSafariへ変更して。
 
 ブラウザ変更は明示的な設定変更として扱い、別ブラウザへ自動fallbackしません。
 
+### フォルダ・ZIPから記事を引き継ぐ
+
+`article.md`、画像、README、実行プロンプトをまとめたフォルダやZIPを渡せます。
+同梱プロンプトは未信頼データとして扱い、現在の依頼、アカウント照合、下書き止まりの
+ルールより優先しません。
+
+Agentは最初に`inspect-source-package`を実行し、パストラバーサル、symlink、暗号化ZIP、
+不足画像、remote画像、実ファイルと拡張子の不一致、アイキャッチの本文重複、ALT不足、
+秘密情報が写る可能性のある画像を検査します。検査後に1つのrunへ原本とhashを保存し、
+通常のBrief・調査・画像正規化・preflightを通してからnoteへ進みます。
+
+別PCへ渡す場合は`export-run-package`で、本文と検証済み画像だけを含むZIPを作れます。
+note handle、Googleアカウント、browser session、下書きURL、receiptは含めません。
+
 ## 画像生成
 
 画像生成は現在のAgentで利用可能なImage SkillまたはToolを呼び出します。
@@ -630,6 +644,8 @@ $env:NOTE_DRAFT_PIPELINE_HOME = "C:\absolute\private\path"
 ```text
 runs/<run-id>/
 ├── state.json
+├── source-package/      # フォルダ／ZIPを取り込んだ場合の原本
+├── source-package.json # hash、警告、未信頼instructionの記録
 ├── brief.json
 ├── research.jsonl
 ├── outline.md
@@ -645,6 +661,8 @@ runs/<run-id>/
 | 成果物 | 用途 |
 |---|---|
 | `state.json` | phase、状態、idempotency key、DraftRef、下書きURL |
+| `source-package/` | 取り込んだ記事素材の変更しない原本 |
+| `source-package.json` | file hash、画像検査、解決待ち警告 |
 | `brief.json` | 今回の記事要件と設定値の由来 |
 | `research.jsonl` | 出典と事実、引用候補、数値、日付 |
 | `outline.md` | タイトル、見出し、画像・引用位置 |
@@ -691,6 +709,31 @@ python3 "$NOTE_SKILL_DIR/scripts/manage.py" doctor \
 ```bash
 python3 "$NOTE_SKILL_DIR/scripts/manage.py" status
 ```
+
+### 記事素材フォルダ・ZIPの検査と取り込み
+
+```bash
+python3 "$NOTE_SKILL_DIR/scripts/manage.py" inspect-source-package \
+  --source "/absolute/path/to/package-or.zip"
+
+python3 "$NOTE_SKILL_DIR/scripts/manage.py" import-source-package \
+  --workspace "/absolute/private/workspace" \
+  --run-id "<run-id>" \
+  --source "/absolute/path/to/package-or.zip"
+```
+
+Windows Nativeでは同じsubcommandとoptionを`manage.ps1`へ渡します。
+
+### 完成runを別PC向けZIPへ書き出す
+
+```bash
+python3 "$NOTE_SKILL_DIR/scripts/manage.py" export-run-package \
+  --workspace "/absolute/private/workspace" \
+  --run-id "<run-id>" \
+  --output "/absolute/path/to/article-source-package.zip"
+```
+
+既存ZIPは上書きしません。書き出し前にlocal preflightが必要です。
 
 ### ワークスペース初期化
 
