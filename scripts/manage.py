@@ -385,6 +385,26 @@ def load_workspace(workspace: Path) -> dict:
     return state
 
 
+def browser_selection_is_confirmed(state: dict) -> bool:
+    selection = state.get("browser_selection")
+    return (
+        isinstance(selection, dict)
+        and selection.get("browser") == state.get("browser")
+        and selection.get("confirmed_by_user") is True
+        and isinstance(selection.get("confirmed_at"), str)
+        and bool(selection["confirmed_at"])
+    )
+
+
+def require_browser_selection_confirmation(state: dict) -> None:
+    if not browser_selection_is_confirmed(state):
+        raise ManageError(
+            "browser choice is not user-confirmed; ask the user to choose Chrome or "
+            "Safari, then run select-browser --browser <choice> "
+            "--browser-confirmed-by-user"
+        )
+
+
 def copy_template(template: Path, workspace: Path) -> tuple[int, int]:
     if not template.is_dir():
         raise ManageError(f"workspace template not found: {template}")
@@ -419,8 +439,16 @@ def copy_template(template: Path, workspace: Path) -> tuple[int, int]:
 
 
 def init_workspace(
-    workspace: Path, browser: str, template: Path = WORKSPACE_TEMPLATE
+    workspace: Path,
+    browser: str,
+    browser_confirmed_by_user: bool = False,
+    template: Path = WORKSPACE_TEMPLATE,
 ) -> dict:
+    if not browser_confirmed_by_user:
+        raise ManageError(
+            "browser choice is not user-confirmed; ask the user to choose Chrome or "
+            "Safari, then rerun init with --browser-confirmed-by-user"
+        )
     if is_within(workspace.resolve(), SKILL_ROOT):
         raise ManageError("workspace must be outside the Skill checkout")
     existing = None
@@ -445,6 +473,11 @@ def init_workspace(
         existing = {
             "schema_version": SCHEMA_VERSION,
             "browser": browser,
+            "browser_selection": {
+                "browser": browser,
+                "confirmed_by_user": True,
+                "confirmed_at": timestamp,
+            },
             "created_at": timestamp,
             "updated_at": timestamp,
             "status": "onboarding",
@@ -452,14 +485,78 @@ def init_workspace(
             "expected_brain_handle": None,
         }
         write_json(state_path(workspace), existing)
+    elif not browser_selection_is_confirmed(existing):
+        timestamp = utc_now()
+        existing["browser_selection"] = {
+            "browser": browser,
+            "confirmed_by_user": True,
+            "confirmed_at": timestamp,
+        }
+        existing["updated_at"] = timestamp
+        write_json(state_path(workspace), existing)
     secure_workspace_permissions(workspace)
     return {
         "workspace": str(workspace),
         "browser": existing["browser"],
+        "browser_confirmed_by_user": True,
         "status": existing["status"],
         "copied": copied,
         "skipped": skipped,
         "initialized": True,
+    }
+
+
+def select_browser(
+    workspace: Path, browser: str, browser_confirmed_by_user: bool = False
+) -> dict:
+    if not browser_confirmed_by_user:
+        raise ManageError(
+            "browser choice is not user-confirmed; ask the user to choose Chrome or "
+            "Safari, then rerun select-browser with --browser-confirmed-by-user"
+        )
+    state = load_workspace(workspace)
+    previous_browser = state["browser"]
+    changed = previous_browser != browser
+    timestamp = utc_now()
+
+    generator_path = workspace / "NOTE_GENERATOR.md"
+    if not generator_path.is_file():
+        raise ManageError("missing required Markdown: NOTE_GENERATOR.md")
+    generator_text = generator_path.read_text(encoding="utf-8")
+    generator_text, count = re.subn(
+        r"(?m)^([ \t]*-[ \t]*使用ブラウザ[ \t]*[:：][ \t]*)(.*?)[ \t]*$",
+        lambda match: match.group(1)
+        + ("" if match.group(1)[-1:].isspace() else " ")
+        + browser,
+        generator_text,
+    )
+    if count != 1:
+        raise ManageError("NOTE_GENERATOR.md must contain exactly one 使用ブラウザ field")
+
+    state["browser"] = browser
+    state["browser_selection"] = {
+        "browser": browser,
+        "confirmed_by_user": True,
+        "confirmed_at": timestamp,
+    }
+    state["updated_at"] = timestamp
+    if changed:
+        state["status"] = "onboarding"
+        state["expected_account_handle"] = None
+        state["expected_brain_handle"] = None
+        state.pop("ready_at", None)
+
+    generator_path.write_text(generator_text, encoding="utf-8")
+    write_json(state_path(workspace), state)
+    secure_workspace_permissions(workspace)
+    return {
+        "workspace": str(workspace),
+        "previous_browser": previous_browser,
+        "browser": browser,
+        "browser_changed": changed,
+        "browser_confirmed_by_user": True,
+        "status": state["status"],
+        "account_reconfirmation_required": changed,
     }
 
 
@@ -1232,6 +1329,7 @@ def mark_ready(
 ) -> dict:
     validation = validate_workspace(workspace)
     state = load_workspace(workspace)
+    require_browser_selection_confirmation(state)
     account_handle = normalize_account_handle(account_handle)
     validate_onboarding(workspace, state, account_handle)
     timestamp = utc_now()
@@ -1263,6 +1361,7 @@ def verify_account(
     if key is None:
         raise ManageError(f"unsupported platform: {platform}")
     state = load_workspace(workspace)
+    require_browser_selection_confirmation(state)
     expected = state.get(key)
     if state["status"] != "ready" or not expected:
         raise ManageError(f"workspace has no confirmed {platform} account handle")
@@ -1277,6 +1376,7 @@ def verify_account(
 def schedule_prompt(workspace: Path) -> dict:
     """Emit a scheduler-safe prompt that points at this Skill and the saved profile."""
     state = load_workspace(workspace)
+    require_browser_selection_confirmation(state)
     if state["status"] != "ready":
         raise ManageError("workspace is not ready; run ready --account-handle first")
 
@@ -1324,6 +1424,7 @@ def schedule_prompt(workspace: Path) -> dict:
 
 def new_run(workspace: Path, requested_run_id: str | None) -> dict:
     workspace_state = load_workspace(workspace)
+    require_browser_selection_confirmation(workspace_state)
     if workspace_state["status"] != "ready":
         raise ManageError("workspace is not ready; run ready --account-handle first")
     validate_onboarding(
@@ -1932,7 +2033,8 @@ def checkpoint(
     draft_url: str | None,
     draft_ref: str | None = None,
 ) -> dict:
-    load_workspace(workspace)
+    workspace_state = load_workspace(workspace)
+    require_browser_selection_confirmation(workspace_state)
     if not SAFE_ID_RE.fullmatch(run_id):
         raise ManageError("invalid run_id")
     if phase not in PHASES or phase_status not in PHASE_STATUSES:
@@ -1941,6 +2043,11 @@ def checkpoint(
     state = read_json(path)
     if state.get("run_id") != run_id:
         raise ManageError("run state does not match run_id")
+    if state.get("browser") != workspace_state["browser"]:
+        raise ManageError(
+            "run browser does not match the user-confirmed workspace browser; "
+            "start a new run after browser onboarding"
+        )
     validate_checkpoint_gate(path.parent, state, phase, phase_status)
 
     if draft_url is not None:
@@ -1978,6 +2085,8 @@ def workspace_status(workspace: Path) -> dict:
             "initialized": False,
             "status": "uninitialized",
             "browser": None,
+            "browser_confirmed_by_user": False,
+            "browser_choice_required": True,
             "expected_account_handle": None,
             "runs": [],
         }
@@ -2005,6 +2114,8 @@ def workspace_status(workspace: Path) -> dict:
         "initialized": True,
         "status": state["status"],
         "browser": state["browser"],
+        "browser_confirmed_by_user": browser_selection_is_confirmed(state),
+        "browser_choice_required": not browser_selection_is_confirmed(state),
         "expected_account_handle": state.get("expected_account_handle"),
         "expected_brain_handle": state.get("expected_brain_handle"),
         "runs": runs,
@@ -2045,8 +2156,44 @@ def self_check() -> dict:
     with tempfile.TemporaryDirectory(prefix="write-note-drafts-") as temp:
         root = Path(temp)
         workspace = root / "workspace"
-        result = init_workspace(workspace, "chrome")
+        try:
+            init_workspace(workspace, "chrome")
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("unconfirmed browser choice was accepted")
+        result = init_workspace(workspace, "chrome", browser_confirmed_by_user=True)
         assert result["initialized"]
+        assert result["browser_confirmed_by_user"] is True
+        assert workspace_status(workspace)["browser_choice_required"] is False
+        legacy_state = load_workspace(workspace)
+        legacy_state.pop("browser_selection")
+        write_json(state_path(workspace), legacy_state)
+        assert workspace_status(workspace)["browser_choice_required"] is True
+        for guarded_action in (
+            lambda: mark_ready(workspace, "example_user"),
+            lambda: new_run(workspace, "legacy-browser-check"),
+            lambda: verify_account(workspace, "example_user"),
+            lambda: schedule_prompt(workspace),
+        ):
+            try:
+                guarded_action()
+            except ManageError as exc:
+                assert "browser choice is not user-confirmed" in str(exc)
+            else:
+                raise AssertionError("legacy unconfirmed browser state was accepted")
+        select_browser(workspace, "chrome", browser_confirmed_by_user=True)
+        changed = select_browser(
+            workspace, "safari", browser_confirmed_by_user=True
+        )
+        assert changed["browser_changed"] is True
+        assert changed["account_reconfirmation_required"] is True
+        assert load_workspace(workspace)["browser"] == "safari"
+        restored = select_browser(
+            workspace, "chrome", browser_confirmed_by_user=True
+        )
+        assert restored["browser_changed"] is True
+        assert markdown_fields(workspace / "NOTE_GENERATOR.md")["使用ブラウザ"] == "chrome"
         (workspace / "assets" / "logo.png").write_bytes(one_pixel_png)
         (workspace / "ASSET_SELF_CHECK.md").write_text(
             "![brand](./assets/logo.png)\n", encoding="utf-8"
@@ -2836,6 +2983,22 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = commands.add_parser("init")
     init_parser.add_argument("--workspace", required=True)
     init_parser.add_argument("--browser", choices=sorted(ALLOWED_BROWSERS), required=True)
+    init_parser.add_argument(
+        "--browser-confirmed-by-user",
+        action="store_true",
+        help="assert that the user explicitly chose this browser in the current setup",
+    )
+
+    select_browser_parser = commands.add_parser("select-browser")
+    select_browser_parser.add_argument("--workspace", required=True)
+    select_browser_parser.add_argument(
+        "--browser", choices=sorted(ALLOWED_BROWSERS), required=True
+    )
+    select_browser_parser.add_argument(
+        "--browser-confirmed-by-user",
+        action="store_true",
+        help="assert that the user explicitly chose this browser in the current setup",
+    )
 
     for name in ("status", "validate"):
         add_workspace_option(commands.add_parser(name))
@@ -2903,7 +3066,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             workspace = workspace_path(args.workspace)
             if args.command == "init":
-                result = init_workspace(workspace, args.browser)
+                result = init_workspace(
+                    workspace,
+                    args.browser,
+                    browser_confirmed_by_user=args.browser_confirmed_by_user,
+                )
+            elif args.command == "select-browser":
+                result = select_browser(
+                    workspace,
+                    args.browser,
+                    browser_confirmed_by_user=args.browser_confirmed_by_user,
+                )
             elif args.command == "doctor":
                 result = doctor(
                     workspace, args.browser, args.agent, target=args.target

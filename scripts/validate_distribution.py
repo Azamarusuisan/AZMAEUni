@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN_NAME = "write-note-drafts"
-RELEASE_REF = "v0.3.3"
+RELEASE_REF = "v0.3.4"
 REPOSITORY_URL = "https://github.com/Azamarusuisan/AZMAEUni.git"
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
@@ -77,6 +77,17 @@ def main() -> int:
         assert required_platform in research_router, (
             f"research router is missing {required_platform}"
         )
+
+    manager = (ROOT / "scripts/manage.py").read_text(encoding="utf-8")
+    canonical_skill = canonical.read_text(encoding="utf-8")
+    for required_guard in (
+        "--browser-confirmed-by-user",
+        "browser_selection",
+        "require_browser_selection_confirmation",
+        "select-browser",
+    ):
+        assert required_guard in manager, f"manager is missing {required_guard}"
+    assert "never add it speculatively" in canonical_skill
 
     assert marketplace.get("name") == "azmaeuni"
     plugins = marketplace.get("plugins")

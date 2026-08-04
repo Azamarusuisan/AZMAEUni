@@ -116,7 +116,7 @@ Codexアプリを再起動し、新しいチャットで次のように依頼し
 $write-note-drafts を使ってnoteを書いて
 ```
 
-marketplace側でバージョン`v0.3.3`へ固定するため、開発途中の変更が購入者環境へ
+marketplace側でバージョン`v0.3.4`へ固定するため、開発途中の変更が購入者環境へ
 突然入ることはありません。更新版へ切り替えるときだけ、配布側が検証済みrelease
 tagを更新します。
 GitHub URLへPersonal Access Tokenを埋め込まないでください。
@@ -219,8 +219,8 @@ hermes skills list
 最初のnote作成依頼では、いきなり本文を書きません。
 
 1. 共通Doctorを実行する
-2. ChromeまたはSafariを選ぶ
-3. 選択したブラウザ能力だけを確認する
+2. エージェントが「ChromeとSafariのどちらを使いますか？」と質問する（WindowsでもChromeを勝手に確定しない）
+3. 利用者がブラウザ名を答えたあと、その選択を記録して選択ブラウザの能力だけを確認する
 4. noteを開き、必要なら利用者が手動ログインする
 5. 現在ログイン中のnote handleを読み、利用者が確認する
 6. 未解決のプロフィール・執筆・調査・画像設定をヒアリングする
@@ -478,7 +478,7 @@ $write-note-drafts のブラウザ設定をChromeからSafariへ変更して。
 現在ログイン中のnoteアカウントを再確認して。
 ```
 
-ブラウザ変更は明示的な設定変更として扱い、別ブラウザへ自動fallbackしません。
+ブラウザ変更は明示的な設定変更として扱います。エージェントは利用者へ希望ブラウザを質問し、回答後に `select-browser --browser <choice> --browser-confirmed-by-user` を実行します。別ブラウザへ自動fallbackしません。
 
 ### フォルダ・ZIPから記事を引き継ぐ
 
@@ -745,10 +745,22 @@ python3 "$NOTE_SKILL_DIR/scripts/manage.py" export-run-package \
 ```bash
 python3 "$NOTE_SKILL_DIR/scripts/manage.py" init \
   --workspace "$HOME/.config/write-note-drafts" \
-  --browser chrome
+  --browser chrome \
+  --browser-confirmed-by-user
 ```
 
-既存Markdownは上書きしません。
+このコマンドは、エージェントが現在の会話でブラウザを質問し、利用者が明示的に回答したあとだけ実行します。確認フラグを省くと初期化は失敗します。既存Markdownは上書きしません。
+
+誤って選ばれたブラウザや、確認記録のない旧ワークスペースは、利用者へ聞き直してから修正します。
+
+```bash
+python3 "$NOTE_SKILL_DIR/scripts/manage.py" select-browser \
+  --workspace "$HOME/.config/write-note-drafts" \
+  --browser safari \
+  --browser-confirmed-by-user
+```
+
+ブラウザを変更した場合はオンボーディングへ戻り、保存済みhandleを消して現在のログインセッションを再確認します。
 
 ### 設定・素材検証
 

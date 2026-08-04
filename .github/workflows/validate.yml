@@ -60,6 +60,8 @@ jobs:
           $env:WRITE_NOTE_DRAFTS_PYTHON = (Get-Command python.exe).Source
           $workspace = Join-Path $env:RUNNER_TEMP "購入者 環境\記事ワークスペース"
           & .\scripts\manage.ps1 init --browser chrome --workspace $workspace
+          if ($LASTEXITCODE -eq 0) { throw "Unconfirmed browser choice was accepted" }
+          & .\scripts\manage.ps1 init --browser chrome --browser-confirmed-by-user --workspace $workspace
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & .\scripts\manage.ps1 status --workspace $workspace
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

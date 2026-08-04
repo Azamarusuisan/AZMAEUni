@@ -682,7 +682,7 @@ git version 2.x.x
     </ol>
     <div class="box">
       <span class="head">固定版を入れる理由</span>
-      <p>Plugin本体は検証済みrelease tag <code>v0.3.3</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
+      <p>Plugin本体は検証済みrelease tag <code>v0.3.4</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
     </div>
 
     <h3>Claude Code／Hermesとも共有する</h3>
@@ -824,8 +824,8 @@ AssertionError</span></pre>
       </div>
     </div>
 
-    <h3>2. ワークスペースを作る</h3>
-    <p>設定と記事の保存先です。既定は次の場所で、環境変数 <code>NOTE_DRAFT_PIPELINE_HOME</code> でも変えられます。</p>
+    <h3>2. ブラウザを本人が選んで、ワークスペースを作る</h3>
+    <p>設定と記事の保存先です。既定は次の場所で、環境変数 <code>NOTE_DRAFT_PIPELINE_HOME</code> でも変えられます。<strong>エージェントは先に Chrome／Safari を質問し、あなたの回答前に選択してはいけません。</strong> Windows は Chrome だけに対応しますが、その場合も「Chromeで進めてよいか」を確認します。</p>
     <pre class="plainblock os-mac">~/.config/write-note-drafts</pre>
     <pre class="plainblock os-win">%USERPROFILE%\.config\write-note-drafts</pre>
 
@@ -834,6 +834,8 @@ AssertionError</span></pre>
 <pre><span class="c">python3 scripts/manage.py status --workspace ~/.config/write-note-drafts</span>
 <span class="o">{
   "browser": null,
+  "browser_choice_required": true,
+  "browser_confirmed_by_user": false,
   "expected_account_handle": null,
   "initialized": false,
   "runs": [],
@@ -841,9 +843,12 @@ AssertionError</span></pre>
   "workspace": "/Users/you/.config/write-note-drafts"
 }</span>
 
-<span class="c">python3 scripts/manage.py init --browser chrome --workspace ~/.config/write-note-drafts</span>
+<span class="o">エージェント: Chrome と Safari のどちらを使いますか？</span>
+<span class="o">あなた: Chrome</span>
+<span class="c">python3 scripts/manage.py init --browser chrome --browser-confirmed-by-user --workspace ~/.config/write-note-drafts</span>
 <span class="o">{
   "browser": "chrome",
+  "browser_confirmed_by_user": true,
   "copied": 6,
   "initialized": true,
   "skipped": 0,
@@ -856,6 +861,8 @@ AssertionError</span></pre>
 <pre><span class="c">.\scripts\manage.ps1 status --workspace "$env:USERPROFILE\.config\write-note-drafts"</span>
 <span class="o">{
   "browser": null,
+  "browser_choice_required": true,
+  "browser_confirmed_by_user": false,
   "expected_account_handle": null,
   "initialized": false,
   "runs": [],
@@ -863,15 +870,23 @@ AssertionError</span></pre>
   "workspace": "C:\\Users\\you\\.config\\write-note-drafts"
 }</span>
 
-<span class="c">.\scripts\manage.ps1 init --browser chrome --workspace "$env:USERPROFILE\.config\write-note-drafts"</span>
+<span class="o">エージェント: Windows は Google Chrome だけに対応しています。Chrome で進めますか？</span>
+<span class="o">あなた: はい、Chromeで</span>
+<span class="c">.\scripts\manage.ps1 init --browser chrome --browser-confirmed-by-user --workspace "$env:USERPROFILE\.config\write-note-drafts"</span>
 <span class="o">{
   "browser": "chrome",
+  "browser_confirmed_by_user": true,
   "copied": 6,
   "initialized": true,
   "skipped": 0,
   "status": "onboarding",
   "workspace": "C:\\Users\\you\\.config\\write-note-drafts"
 }</span></pre>
+    </div>
+
+    <div class="box stop">
+      <span class="head">回答前の初期化は失敗します</span>
+      <p><code>--browser-confirmed-by-user</code> を付けずに <code>init</code> すると、管理スクリプトは停止して「利用者へ Chrome／Safari を質問してください」と返します。このフラグはエージェントが都合で付けるものではなく、<strong>現在の会話で本人の回答を受け取ったことの表明</strong>です。確認記録が無いワークスペースは <code>ready</code>、記事run、アカウント照合、定期実行へ進めません。</p>
     </div>
 
     <p><code>copied: 6</code> は、この 6 ファイルが置かれたという意味です。</p>
@@ -970,7 +985,7 @@ templates/default.md   記事の型
 
     <div class="chat">
       <div class="msg you"><span class="who">あなた</span>write-note-drafts のセットアップをして</div>
-      <div class="msg"><span class="who">エージェント</span>Doctor を実行します。…ローカル側は問題ありません。<span class="os-mac">ブラウザは <strong>chrome</strong> と <strong>safari</strong> のどちらを操作しますか？</span><span class="os-win">Windowsでは <strong>Google Chrome</strong> を使います。Safariへは切り替えません。</span></div>
+      <div class="msg"><span class="who">エージェント</span>Doctor を実行します。…ローカル側は問題ありません。<span class="os-mac">ブラウザは <strong>chrome</strong> と <strong>safari</strong> のどちらを操作しますか？ 回答するまで初期化しません。</span><span class="os-win">Windowsは <strong>Google Chrome</strong> だけに対応しています。Chromeで進めますか？ 回答するまで初期化しません。</span></div>
       <div class="msg you"><span class="who">あなた</span>chrome</div>
       <div class="msg"><span class="who">エージェント</span>Chrome 拡張の接続を確認しました。note を開きます。ログイン状態を確認してください。</div>
       <div class="msg"><span class="who">エージェント</span>画面上のハンドルは <code>@your_handle</code> と読み取れました。このアカウントで合っていますか？</div>
@@ -1365,7 +1380,7 @@ templates/default.md   記事の型
 
     <details>
       <summary>インストール時に「Azamarusuisanへログイン」と表示された</summary>
-      <p>古い <code>v0.1.0</code>〜<code>v0.3.2</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.3</code> はインストール時のGitHub認証を要求しません。</p>
+      <p>古い <code>v0.1.0</code>〜<code>v0.3.3</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.4</code> はインストール時のGitHub認証を要求しません。</p>
     </details>
 
     <details>
@@ -1460,7 +1475,8 @@ templates/default.md   記事の型
       <table>
         <thead><tr><th>コマンド</th><th>必須オプション</th><th>用途</th></tr></thead>
         <tbody>
-          <tr><td><code>init</code></td><td><code>--workspace</code> <code>--browser chrome|safari</code></td><td>ワークスペース作成</td></tr>
+          <tr><td><code>init</code></td><td><code>--workspace</code> <code>--browser chrome|safari</code> <code>--browser-confirmed-by-user</code></td><td>本人がブラウザを回答した後だけワークスペースを作成</td></tr>
+          <tr><td><code>select-browser</code></td><td><code>--workspace</code> <code>--browser chrome|safari</code> <code>--browser-confirmed-by-user</code></td><td>本人へ聞き直してブラウザを確定。変更時はアカウントを再確認</td></tr>
           <tr><td><code>status</code></td><td><code>--workspace</code></td><td>現在の状態（<code>uninitialized</code>／<code>onboarding</code>／<code>ready</code>）</td></tr>
           <tr><td><code>doctor</code></td><td><code>--workspace</code>／<code>--browser</code>／<code>--agent codex|claude|hermes</code>／<code>--target note|brain</code></td><td>環境診断。Brain はブラウザ指定と実機での意味的観察が必須</td></tr>
           <tr><td><code>validate</code></td><td><code>--workspace</code></td><td>設定ファイルの整合性チェック</td></tr>

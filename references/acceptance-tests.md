@@ -66,6 +66,14 @@ Keep forward-test workspaces isolated and remove them after reviewing their raw 
 
 Run each provider independently; never fall back from one to the other.
 
+Before the matrix, verify the browser-choice harness:
+
+1. `init --browser chrome` fails and tells the agent to ask the user.
+2. After the user explicitly selects a provider, `init --browser <choice> --browser-confirmed-by-user` succeeds and stores the matching confirmation timestamp.
+3. A legacy workspace without the confirmation record cannot become `ready`, create a run, verify an account, or generate a schedule until `select-browser --browser <choice> --browser-confirmed-by-user` is run.
+4. Changing providers resets onboarding and clears saved note/Brain handles.
+5. Native Windows still asks the user to confirm Chrome; Safari is described as unsupported rather than selected or attempted automatically.
+
 | Scenario | Chrome | Safari | Pass condition |
 |---|---:|---:|---|
 | Logged out | Required | Required | Requests manual login; no credentials requested and no draft created |

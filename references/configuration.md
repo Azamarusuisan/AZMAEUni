@@ -45,6 +45,11 @@ The `ready` gate requires the selected browser and note handle, automation mode 
   "schema_version": 1,
   "status": "ready",
   "browser": "chrome",
+  "browser_selection": {
+    "browser": "chrome",
+    "confirmed_by_user": true,
+    "confirmed_at": "2026-01-01T00:00:00Z"
+  },
   "expected_account_handle": "example",
   "created_at": "2026-01-01T00:00:00+00:00",
   "updated_at": "2026-01-01T00:00:00+00:00"
@@ -54,10 +59,12 @@ The `ready` gate requires the selected browser and note handle, automation mode 
 Rules:
 
 - `browser` is exactly `chrome` or `safari`.
+- `browser_selection` records the same provider only after the user explicitly chooses it in the current setup conversation. Host defaults, tool availability, or an agent's preference are not confirmation.
+- `init` and `select-browser` reject calls without `--browser-confirmed-by-user`. `ready`, `new-run`, `verify-account`, and `schedule-prompt` reject workspaces without a matching confirmation record.
 - `expected_account_handle` is recorded only after reading and confirming the logged-in note UI.
 - `NOTE_GENERATOR.md` shows the same confirmed handle; if the two values differ, resume setup and reconfirm the live session instead of choosing either value silently.
 - A different live handle stops all note mutations.
-- Changing browser requires explicit setup revision and a new session check.
+- Changing browser requires `select-browser --browser <choice> --browser-confirmed-by-user`, resets the workspace to onboarding, clears confirmed handles, and requires a new live session check.
 - Never add credentials, cookies, tokens, or recovery codes.
 
 ## Automation settings

@@ -10,7 +10,7 @@ Run the Doctor before onboarding and before every article:
 | Chrome | Host-supported Chrome control and the selected logged-in Chrome session | Stop; do not open Safari |
 | Safari | macOS, Safari, host-supported semantic Computer Use, required Accessibility/Screen Recording permissions | Stop; do not open Chrome |
 
-Check common capabilities first, then only the selected provider. During a blank setup, obtain the browser choice between those two checks. Treat an unverified capability as `fail`, not `pass`. Never fall back to the other browser silently.
+Check common capabilities first, then ask the user which provider to use and wait for the answer. Do not infer a choice from the host, available tools, or a previous failure. Record it with `init --browser <choice> --browser-confirmed-by-user` or `select-browser --browser <choice> --browser-confirmed-by-user`, then check only that provider. On native Windows, explain that Chrome is the only supported provider but still require explicit confirmation. Treat an unverified capability as `fail`, not `pass`. Never fall back to the other browser silently.
 
 ## First invocation
 
@@ -22,8 +22,10 @@ flowchart TD
   C --> P{Pass?}
   P -->|No| X[Stop with setup and retry steps]
   P -->|Yes| S{Workspace ready?}
-  S -->|No| B[Choose Chrome or Safari]
-  B --> D[Run selected-provider Doctor]
+  S -->|No| B[Ask user: Chrome or Safari]
+  B --> C2[Wait for explicit answer]
+  C2 --> R[Record confirmed browser choice]
+  R --> D[Run selected-provider Doctor]
   D --> Q{Pass?}
   Q -->|No| X
   Q -->|Yes| E[User logs in manually if needed]
@@ -206,7 +208,8 @@ Manual recovery output lists the exact local `article.md`, image files in insert
 - The runtime Doctor runs before onboarding and every article.
 - Failed common, Chrome, or Safari checks stop before intake or browser mutation.
 - Provider failure never causes a silent browser fallback.
-- Browser choice is saved as `chrome` or `safari` and is not silently changed.
+- The agent asks the user for the browser on first setup; `init` without `--browser-confirmed-by-user` fails.
+- Browser choice is saved with a confirmation timestamp and is not silently changed. `ready` and article runs fail when that confirmation is missing or does not match the saved provider.
 - `autopilot` cannot run before mandatory onboarding reaches `ready`.
 - `guided` records Brief confirmation.
 - `autopilot` requires a theme, persists a resolved Brief, and pauses only for a missing/conflicting/high-risk value.
