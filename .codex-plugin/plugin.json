@@ -1,6 +1,6 @@
 {
   "name": "write-note-drafts",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Research Japanese, English, and Chinese sources and create verified free or paid note drafts.",
   "author": {
     "name": "Azamarusuisan",
@@ -14,10 +14,10 @@
   "interface": {
     "displayName": "Note Draft Pipeline",
     "shortDescription": "日英中の情報を調べ、無料／有料note記事を下書きまで作成",
-    "longDescription": "日本のnote、英語圏のReddit、Baiduを入口にした中国語圏を、官公庁・論文・企業IR・ニュース・技術情報と照合して調査します。記事フォルダ／ZIPの検査、文体学習、無料／有料記事、価格・有料ライン案、文字入り画像、noteへの未公開下書き保存と再読検証まで進めます。公開・販売開始は行いません。",
+    "longDescription": "日本のnote、英語圏のReddit、Baiduを入口にした中国語圏を、官公庁・論文・企業IR・ニュース・技術情報と照合して調査します。記事フォルダ／ZIPの検査、文体学習、利用者固有の画像の相棒、無料／有料記事、価格・有料ライン案、文字入り画像、noteへの未公開下書き保存と再読検証まで進めます。公開・販売開始は行いません。",
     "developerName": "Azamarusuisan",
     "category": "Productivity",
-    "capabilities": ["Japanese/English/Chinese research", "Portable source-package inspection", "Free and paid article writing", "Verified image drafting"],
+    "capabilities": ["Japanese/English/Chinese research", "Portable source-package inspection", "Free and paid article writing", "User-specific visual partner", "Verified image drafting"],
     "defaultPrompt": [
       "私の文体を学習して、noteの未公開下書きを作って",
       "このテーマを複数の情報源で調べ、note下書きにして",

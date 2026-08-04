@@ -1,6 +1,6 @@
 ---
 name: write-note-drafts
-description: Interview, learn a user's Japanese writing style, inspect portable article folders or ZIPs, research official and community sources including Japanese note, Reddit, and Baidu/Chinese-language platforms, write free or paid articles, generate images, and save an unpublished article draft to note using the user's logged-in Chrome or Safari session. Use for requests such as 「noteを書いて」, 「有料記事を書いて」, 「日英中の情報を調べて」, 「このZIPからnote下書きを作って」, evidence-backed article creation, note draft automation, style learning, first-time setup, or outline-only mode.
+description: Interview, learn a user's Japanese writing style and optional visual partner, inspect portable article folders or ZIPs, research official and community sources including Japanese note, Reddit, and Baidu/Chinese-language platforms, write free or paid articles, generate identity-checked images, and save an unpublished article draft to note using the user's logged-in Chrome or Safari session. Use for requests such as 「noteを書いて」, 「有料記事を書いて」, 「日英中の情報を調べて」, 「このZIPからnote下書きを作って」, evidence-backed article creation, note draft automation, style learning, first-time setup, or outline-only mode.
 ---
 
 # Note Draft Pipeline
@@ -72,10 +72,11 @@ If the workspace is absent or its status is not `ready`, do not start an article
    - research depth, overseas sources, source categories, date range, SEO/AIO, keywords;
    - default access model (`free`, `paid`, or `ask_each_time`) and paid-article goals;
    - image count, style, diagrams, thumbnail, and whether thumbnails contain text;
+   - whether the user has a recurring visual partner (mascot/character), wants none, or wants to design one; when one exists, collect only user-approved local references, invariant traits, allowed variations, style, palette, appearance policy, and rights confirmation;
    - `自動化モード` (`guided` or `autopilot`) and `構成確認` (`毎回` or `依頼時のみ`);
    - two to five self-authored note article URLs when available;
    - brand assets and reusable article rules.
-7. Write the answers to `PROFILE.md`, `OPERATING_RULES.md`, `ASSETS.md`, and `templates/default.md`.
+7. Write the answers to `PROFILE.md`, `OPERATING_RULES.md`, `ASSETS.md`, and `templates/default.md`. Read [references/visual-identity.md](references/visual-identity.md). Do not mark the workspace ready while `画像の相棒` is blank or `これから作る`; `いる` requires an approved complete identity profile, while `いない` remains a valid opt-out.
 8. Load only articles the user confirms they authored. Analyze endings, line breaks, kanji ratio, sentence length, headings, opening, closing, tone, lists, and CTA. Write observations—not copied article bodies—to `WRITING_PROFILE.md`. Mark unsupported dimensions as unknown.
 9. Keep `NOTE_GENERATOR.md` as the master index and ensure all local asset links resolve.
 10. Run `validate`. Then run `ready --account-handle <confirmed-handle>`.
@@ -134,6 +135,7 @@ Run `new-run` and use its run directory, or reuse the run just created for `impo
 - supplied references and whether overseas sources are allowed;
 - research scope and publication date range;
 - image count/style, diagram, thumbnail;
+- whether the registered visual partner appears in this article, its exact placements, and the approved reference path/hash pairs. Save `images.visual_partner` even when its mode is `none`;
 - CTA, SEO, AIO, and keywords.
 - access model (`free` or `paid`). For `paid`, also resolve the purchase promise, what the free and paid sections deliver, a paywall heading, and a proposed price with rationale.
 
@@ -158,13 +160,13 @@ Checkpoint each completed phase.
 
 ## Generate images
 
-Use the current host's verified image capability for every generated raster asset. In Codex, read and follow the installed `imagegen` Skill. In Claude Code, follow the connected image-generation Skill/MCP instructions. In Hermes Agent, use `image_generate` and its current tool documentation.
+Use the current host's verified image capability for every generated raster asset. In Codex, read and follow the installed `imagegen` Skill. In Claude Code, follow the connected image-generation Skill/MCP instructions. In Hermes Agent, use `image_generate` and its current tool documentation. When `ASSETS.md` registers a visual partner, also read and follow [references/visual-identity.md](references/visual-identity.md).
 
 1. Write `image-plan.md` with kind, purpose, placement, aspect ratio, prompt, text constraints, and alt text.
 2. Support thumbnail, article image, diagram, comparison, and flow image.
 3. For every text-bearing thumbnail or body image, save the exact copy verbatim in `image-plan.md` and the Article Package. Verify every character in the rendered file before upload. Regenerate or deterministically rerender wrong, clipped, or unreadable text.
 4. Make one image-generation call per distinct asset.
-5. Use validated local files from `ASSETS.md` as references only when needed.
+5. Use validated local files from `ASSETS.md` as references only when needed. For every planned visual-partner placement, use the approved reference files and preserve the registered invariant traits; never improvise a replacement character.
 6. Copy each generated output into the current run's `images/` directory.
 7. Normalize the note thumbnail to exactly `1280x670` before upload and record the final pixel dimensions in `image-plan.md`. For Brain, observe the platform's current recommended ratio instead of reusing note's value.
 8. Record `kind`, final `width` and `height`, placement, alt text, SHA-256, and exact image copy when present. Validate all of them against the final file before upload. Do not reference temporary generator output paths.
@@ -182,6 +184,7 @@ Before opening the note editor, ensure:
 - title and article contain no placeholders;
 - factual claims have source IDs and URLs;
 - requested links, images, alt text, thumbnail, and inline hashtags are present;
+- every planned visual-partner image records the approved source paths/hashes and `identity_checked: true`, and `image-plan.md` contains the full registered identity constraints;
 - imported source-package warnings are resolved, every accepted image has been copied into `run/images/` with an extension matching its actual MIME, and thumbnail candidates are not duplicated in the body without an explicit request;
 - every upload path is inside the current run;
 - the selected browser's `browser_file_upload` capability is verified in the current session whenever the package contains a body image or thumbnail;
@@ -239,6 +242,7 @@ Do not claim unsupported browser control. If Safari Computer Use or the Chrome c
 - [references/research-platforms.md](references/research-platforms.md): question-based routing across official, academic, corporate, technical, news, and community sources.
 - [references/scheduling.md](references/scheduling.md): recurring unattended runs and their limits.
 - [references/source-packages.md](references/source-packages.md): safe folder/ZIP inspection, import, normalization, and portable export.
+- [references/visual-identity.md](references/visual-identity.md): optional per-user mascot onboarding, reference locking, appearance policy, and identity QA.
 - [references/agent-compatibility.md](references/agent-compatibility.md): Codex, Claude Code, and Hermes installation and capability mapping.
 - [references/windows.md](references/windows.md): native Windows, WSL2, PowerShell, CI, and error recovery.
 - [README.md](README.md): installation, setup, usage, update, and limitations.

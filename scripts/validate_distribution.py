@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN_NAME = "write-note-drafts"
-RELEASE_REF = "v0.3.4"
+RELEASE_REF = "v0.3.5"
 REPOSITORY_URL = "https://github.com/Azamarusuisan/AZMAEUni.git"
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
@@ -62,6 +62,24 @@ def main() -> int:
     ), "distributed account template must not contain an email address"
     assert "Azamarusuisan" not in account_template
 
+    assets_template = (ROOT / "assets/workspace-template/ASSETS.md").read_text(
+        encoding="utf-8"
+    )
+    for field in (
+        "画像の相棒",
+        "相棒の名前",
+        "基準画像",
+        "絶対に変えない特徴",
+        "変更してよい要素",
+        "登場方針",
+        "利用権確認",
+    ):
+        assert re.search(
+            rf"(?m)^- {re.escape(field)}:\s*$", assets_template
+        ), f"distributed visual-partner field must remain blank: {field}"
+    assert "配布者のキャラクターは置かず" in assets_template
+    assert (ROOT / "references/visual-identity.md").is_file()
+
     research_router = (ROOT / "references/research-platforms.md").read_text(
         encoding="utf-8"
     )
@@ -88,6 +106,15 @@ def main() -> int:
     ):
         assert required_guard in manager, f"manager is missing {required_guard}"
     assert "never add it speculatively" in canonical_skill
+    for required_visual_guard in (
+        "validate_visual_partner_profile",
+        "validate_visual_partner_plan",
+        "identity_checked",
+    ):
+        assert required_visual_guard in manager, (
+            f"manager is missing {required_visual_guard}"
+        )
+    assert "references/visual-identity.md" in canonical_skill
 
     assert marketplace.get("name") == "azmaeuni"
     plugins = marketplace.get("plugins")

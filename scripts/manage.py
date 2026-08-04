@@ -31,7 +31,7 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_SOURCE_PACKAGE_FILES = 200
 MAX_SOURCE_PACKAGE_BYTES = 100 * 1024 * 1024
 SCHEMA_VERSION = 1
-BRIEF_SCHEMA_VERSION = 2
+BRIEF_SCHEMA_VERSION = 3
 RECEIPT_SCHEMA_VERSION = 2
 SOURCE_PACKAGE_SCHEMA_VERSION = 1
 IMAGE_LINK_RE = re.compile(
@@ -103,6 +103,24 @@ SCHEDULE_FIELDS = (
 ALLOWED_AUTOMATION_MODES = {"guided", "autopilot"}
 ALLOWED_OUTLINE_CONFIRMATIONS = {"毎回", "依頼時のみ"}
 ALLOWED_ACCESS_MODELS = {"free", "paid"}
+ALLOWED_VISUAL_PARTNER_STATES = {"いる", "いない", "これから作る"}
+ALLOWED_VISUAL_PARTNER_POLICIES = {
+    "アイキャッチ中心",
+    "要点画像にも登場",
+    "毎画像",
+    "記事ごとに確認",
+}
+VISUAL_PARTNER_REQUIRED_FIELDS = (
+    "相棒の名前",
+    "相棒の役割",
+    "基準画像",
+    "絶対に変えない特徴",
+    "変更してよい要素",
+    "基本の絵柄",
+    "基本配色",
+    "登場方針",
+    "利用権確認",
+)
 ALLOWED_EVIDENCE_ROLES = {
     "primary",
     "analysis",
@@ -148,6 +166,7 @@ ONBOARDING_FIELDS = {
         "AIO",
         "CTAの有無",
     ),
+    "ASSETS.md": ("画像の相棒",),
     "templates/default.md": ("テンプレート名", "使用する記事タイプ"),
 }
 PHASES = {
@@ -1290,6 +1309,79 @@ def markdown_fields(path: Path) -> dict[str, str]:
     return fields
 
 
+def validate_visual_partner_profile(workspace: Path, fields: dict[str, str]) -> dict:
+    selection = fields.get("画像の相棒", "")
+    if selection not in ALLOWED_VISUAL_PARTNER_STATES:
+        raise ManageError("画像の相棒 must be いる, いない, or これから作る")
+    if selection == "いない":
+        return {"mode": "none", "use": False, "sources": []}
+    if selection == "これから作る":
+        raise ManageError(
+            "画像の相棒 is awaiting design approval; approve local reference images "
+            "and change it to いる, or explicitly choose いない"
+        )
+
+    missing = [field for field in VISUAL_PARTNER_REQUIRED_FIELDS if not fields.get(field)]
+    if missing:
+        raise ManageError(
+            "画像の相棒 fields are incomplete: " + ", ".join(missing)
+        )
+    policy = fields["登場方針"]
+    if policy not in ALLOWED_VISUAL_PARTNER_POLICIES:
+        raise ManageError(
+            "登場方針 must be アイキャッチ中心, 要点画像にも登場, 毎画像, or 記事ごとに確認"
+        )
+    if fields["利用権確認"] != "確認済み":
+        raise ManageError("画像の相棒 requires 利用権確認: 確認済み")
+
+    assets_markdown = workspace / "ASSETS.md"
+    base_matches = list(IMAGE_LINK_RE.finditer(fields["基準画像"]))
+    if not base_matches:
+        raise ManageError("画像の相棒 requires a local Markdown image link in 基準画像")
+    supplementary_matches = list(
+        IMAGE_LINK_RE.finditer(fields.get("補助画像", ""))
+    )
+    matches = [*base_matches, *supplementary_matches]
+    if len(matches) > 5:
+        raise ManageError("画像の相棒 accepts at most 5 reference images")
+    sources = []
+    seen_paths = set()
+    root = workspace.resolve()
+    for match in matches:
+        image = local_image_path(match.group("target"), assets_markdown, workspace)
+        relative = image.relative_to(root).as_posix()
+        if relative in seen_paths:
+            continue
+        seen_paths.add(relative)
+        width, height = image_dimensions(image)
+        if width < 256 or height < 256:
+            raise ManageError(
+                f"visual-partner reference must be at least 256x256: {relative}"
+            )
+        sources.append(
+            {
+                "path": relative,
+                "mime": image_mime(image),
+                "width": width,
+                "height": height,
+                "sha256": sha256_file(image),
+            }
+        )
+    return {
+        "mode": "registered",
+        "use": True,
+        "name": fields["相棒の名前"],
+        "role": fields["相棒の役割"],
+        "invariants": fields["絶対に変えない特徴"],
+        "allowed_variations": fields["変更してよい要素"],
+        "style": fields["基本の絵柄"],
+        "palette": fields["基本配色"],
+        "policy": policy,
+        "rights_confirmed": True,
+        "sources": sources,
+    }
+
+
 def validate_onboarding(workspace: Path, state: dict, account_handle: str) -> None:
     missing = []
     values = {}
@@ -1322,6 +1414,7 @@ def validate_onboarding(workspace: Path, state: dict, account_handle: str) -> No
         raise ManageError("サムネイル文字入れ must be あり or なし")
     if thumbnail == "あり" and thumbnail_text != "あり":
         raise ManageError("enabled thumbnails require サムネイル文字入れ: あり")
+    validate_visual_partner_profile(workspace, values["ASSETS.md"])
 
 
 def mark_ready(
@@ -1567,9 +1660,115 @@ def _validate_optional_timestamp(value: object, field: str) -> datetime | None:
     return parsed
 
 
+def validate_visual_partner_plan(
+    workspace: Path, brief: dict, run_created_at: object = None
+) -> dict:
+    schema_version = brief.get("schema_version", 1)
+    if schema_version in {1, 2}:
+        return {"legacy": True, "use": False, "placements": []}
+    if schema_version != BRIEF_SCHEMA_VERSION:
+        raise ManageError("brief.json has an unsupported schema_version")
+    images = brief.get("images")
+    if not isinstance(images, dict):
+        raise ManageError("brief.json images must be an object")
+    plan = images.get("visual_partner")
+    if not isinstance(plan, dict):
+        raise ManageError("brief.json images.visual_partner must be an object")
+    profile = validate_visual_partner_profile(
+        workspace, markdown_fields(workspace / "ASSETS.md")
+    )
+    if profile["mode"] == "none":
+        if plan.get("mode") != "none" or plan.get("use") is not False:
+            raise ManageError(
+                "brief.json visual_partner must be mode=none and use=false when no partner is registered"
+            )
+        return {**profile, "placements": []}
+
+    if plan.get("mode") != "registered":
+        raise ManageError("brief.json visual_partner.mode must be registered")
+    if plan.get("name") != profile["name"]:
+        raise ManageError("brief.json visual_partner.name does not match ASSETS.md")
+    use = plan.get("use")
+    if not isinstance(use, bool):
+        raise ManageError("brief.json visual_partner.use must be a boolean")
+
+    count = images.get("count")
+    thumbnail = images.get("thumbnail")
+    if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+        raise ManageError("brief.json images.count must be a non-negative integer")
+    if not isinstance(thumbnail, bool):
+        raise ManageError("brief.json images.thumbnail must be a boolean")
+    available = [f"body:{index}" for index in range(1, count + 1)]
+    if thumbnail:
+        available.append("thumbnail")
+
+    confirmation = plan.get("confirmed_at")
+    if profile["policy"] == "記事ごとに確認":
+        confirmed_at = _validate_optional_timestamp(
+            confirmation, "images.visual_partner.confirmed_at"
+        )
+        if confirmed_at is None:
+            raise ManageError(
+                "記事ごとに確認 requires visual-partner confirmation in the current Brief"
+            )
+        created_at = _validate_optional_timestamp(run_created_at, "state.created_at")
+        if created_at is not None and confirmed_at < created_at:
+            raise ManageError(
+                "記事ごとに確認 requires current-run visual-partner confirmation"
+            )
+        if confirmed_at > datetime.now(timezone.utc) + timedelta(minutes=5):
+            raise ManageError("brief.json rejects future visual-partner confirmation")
+
+    policy_requires_use = bool(available) and (
+        profile["policy"] in {"要点画像にも登場", "毎画像"}
+        or (profile["policy"] == "アイキャッチ中心" and thumbnail)
+    )
+    if not use:
+        if policy_requires_use:
+            raise ManageError(
+                f"visual partner policy {profile['policy']} requires use in this image plan"
+            )
+        if not isinstance(plan.get("omission_reason"), str) or not plan[
+            "omission_reason"
+        ].strip():
+            raise ManageError("unused visual partner requires omission_reason")
+        return {**profile, "use": False, "placements": []}
+
+    if not available:
+        raise ManageError("visual partner cannot be used when the Brief has no images")
+    placements = plan.get("placements")
+    _require_nonempty_string_list(placements, "images.visual_partner.placements")
+    if len(set(placements)) != len(placements):
+        raise ManageError("brief.json visual_partner placements contain duplicates")
+    invalid = [placement for placement in placements if placement not in available]
+    if invalid:
+        raise ManageError(
+            "brief.json visual_partner has invalid placements: " + ", ".join(invalid)
+        )
+    if profile["policy"] == "毎画像" and set(placements) != set(available):
+        raise ManageError("毎画像 requires the visual partner in every planned image")
+    if profile["policy"] == "アイキャッチ中心" and thumbnail and "thumbnail" not in placements:
+        raise ManageError("アイキャッチ中心 requires thumbnail placement")
+
+    expected_assets = [
+        {"path": source["path"], "sha256": source["sha256"]}
+        for source in profile["sources"]
+    ]
+    if plan.get("source_assets") != expected_assets:
+        raise ManageError(
+            "brief.json visual_partner.source_assets do not match the approved ASSETS.md files"
+        )
+    for field in ("invariants", "allowed_variations", "style", "palette"):
+        if plan.get(field) != profile[field]:
+            raise ManageError(
+                f"brief.json visual_partner.{field} does not match ASSETS.md"
+            )
+    return {**profile, "use": True, "placements": placements}
+
+
 def validate_access_plan(brief: dict) -> dict:
     schema_version = brief.get("schema_version", 1)
-    if schema_version not in {1, BRIEF_SCHEMA_VERSION}:
+    if schema_version not in {1, 2, BRIEF_SCHEMA_VERSION}:
         raise ManageError("brief.json has an unsupported schema_version")
     access = brief.get("access")
     if not isinstance(access, dict):
@@ -1673,7 +1872,7 @@ def validate_research_records(run_dir: Path, brief: dict) -> None:
     path = run_dir / "research.jsonl"
     if not path.is_file():
         raise ManageError("missing research.jsonl")
-    strict = brief.get("schema_version") == BRIEF_SCHEMA_VERSION
+    strict = brief.get("schema_version") in {2, BRIEF_SCHEMA_VERSION}
     seen_ids: set[str] = set()
     record_count = 0
     for line_number, raw_line in enumerate(
@@ -1775,8 +1974,77 @@ def require_resolved_brief(workspace: Path, run_dir: Path) -> dict:
         raise ManageError("brief.json references must be a list")
     for reference in references:
         validate_source_url(reference)
+    run_state = read_json(run_dir / "state.json")
+    validate_visual_partner_plan(workspace, brief, run_state.get("created_at"))
     validate_access_plan(brief)
     return brief
+
+
+def validate_visual_partner_package(
+    workspace: Path,
+    run_dir: Path,
+    brief: dict,
+    package: dict,
+    run_created_at: object = None,
+) -> None:
+    plan = validate_visual_partner_plan(workspace, brief, run_created_at)
+    if plan.get("legacy") is True or plan.get("use") is not True:
+        return
+    image_plan_path = run_dir / "image-plan.md"
+    if not image_plan_path.is_file():
+        raise ManageError("visual partner requires image-plan.md")
+    image_plan = image_plan_path.read_text(encoding="utf-8")
+    required_plan_text = [
+        plan["name"],
+        plan["invariants"],
+        plan["allowed_variations"],
+        plan["style"],
+        plan["palette"],
+        *(source["path"] for source in plan["sources"]),
+        *(source["sha256"] for source in plan["sources"]),
+    ]
+    missing_plan_text = [value for value in required_plan_text if value not in image_plan]
+    if missing_plan_text:
+        raise ManageError(
+            "image-plan.md is missing visual-partner identity data: "
+            + ", ".join(missing_plan_text)
+        )
+
+    body_images = package.get("images", [])
+    thumbnail = package.get("thumbnail")
+    expected_paths = [source["path"] for source in plan["sources"]]
+    expected_hashes = [source["sha256"] for source in plan["sources"]]
+    for placement in plan["placements"]:
+        if placement == "thumbnail":
+            item = thumbnail
+        else:
+            index = int(placement.split(":", 1)[1]) - 1
+            item = body_images[index] if index < len(body_images) else None
+        if not isinstance(item, dict):
+            raise ManageError(
+                f"article package is missing visual-partner placement {placement}"
+            )
+        identity = item.get("visual_partner")
+        if not isinstance(identity, dict):
+            raise ManageError(
+                f"article package {placement} is missing visual_partner QA"
+            )
+        if identity.get("name") != plan["name"]:
+            raise ManageError(
+                f"article package {placement} has the wrong visual-partner name"
+            )
+        if identity.get("source_paths") != expected_paths:
+            raise ManageError(
+                f"article package {placement} source paths do not match ASSETS.md"
+            )
+        if identity.get("source_sha256") != expected_hashes:
+            raise ManageError(
+                f"article package {placement} source hashes do not match ASSETS.md"
+            )
+        if identity.get("identity_checked") is not True:
+            raise ManageError(
+                f"article package {placement} visual identity was not checked"
+            )
 
 
 def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> None:
@@ -1829,6 +2097,9 @@ def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> 
             raise ManageError("missing image-plan.md")
         if thumbnail_text not in image_plan.read_text(encoding="utf-8"):
             raise ManageError("image-plan.md is missing the exact thumbnail_text")
+    validate_visual_partner_package(
+        run_dir.parent.parent, run_dir, brief, package, state.get("created_at")
+    )
     access = validate_access_plan(brief)
     package_access = package.get("access")
     if access.get("legacy_default") is True and package_access is None:
@@ -2141,7 +2412,7 @@ def self_check() -> dict:
     except ManageError:
         pass
     else:
-        raise AssertionError("schema 2 Brief without access was accepted")
+        raise AssertionError("current Brief schema without access was accepted")
     for unsafe_reference in (
         "http://example.com/article",
         "https://user:secret@example.com/article",
@@ -2291,6 +2562,7 @@ def self_check() -> dict:
                     "自動化モード": "invalid",
                     "サムネイル": "あり",
                     "サムネイル文字入れ": "あり",
+                    "画像の相棒": "いない",
                 }.get(field, "self-check")
                 text, count = re.subn(
                     rf"(?m)^([ \t]*-[ \t]*{re.escape(field)}[ \t]*[:：][ \t]*)(.*?)[ \t]*$",
@@ -2333,6 +2605,155 @@ def self_check() -> dict:
             ),
             encoding="utf-8",
         )
+
+        assets_markdown = workspace / "ASSETS.md"
+
+        def set_asset_field(field: str, value: str) -> None:
+            text = assets_markdown.read_text(encoding="utf-8")
+            text, count = re.subn(
+                rf"(?m)^([ \t]*-[ \t]*{re.escape(field)}[ \t]*[:：][ \t]*)(.*?)[ \t]*$",
+                lambda match: match.group(1) + value,
+                text,
+            )
+            assert count == 1, field
+            assets_markdown.write_text(text, encoding="utf-8")
+
+        set_asset_field("画像の相棒", "これから作る")
+        try:
+            mark_ready(workspace, "@example_user")
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("unapproved visual-partner design was accepted")
+        set_asset_field("画像の相棒", "いる")
+        try:
+            mark_ready(workspace, "@example_user")
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("visual partner without references was accepted")
+
+        partner_assets = workspace / "assets"
+        partner_assets.mkdir(exist_ok=True)
+        (partner_assets / "partner.png").write_bytes(make_solid_png(512, 512))
+        partner_values = {
+            "相棒の名前": "しおり",
+            "相棒の役割": "読者と記事の要点をつなぐ案内役",
+            "基準画像": "![しおりの基準画像](./assets/partner.png)",
+            "絶対に変えない特徴": "丸い耳、深緑のスカーフ、左頬の一点",
+            "変更してよい要素": "表情、ポーズ、手に持つ小物",
+            "基本の絵柄": "余白の多いフラットな線画",
+            "基本配色": "深緑、生成り、墨色",
+            "登場方針": "毎画像",
+            "利用権確認": "確認済み",
+        }
+        for field, value in partner_values.items():
+            set_asset_field(field, value)
+        validate_workspace(workspace)
+        partner_profile = validate_visual_partner_profile(
+            workspace, markdown_fields(assets_markdown)
+        )
+        assert partner_profile["mode"] == "registered"
+        assert partner_profile["sources"][0]["width"] == 512
+        partner_source_assets = [
+            {"path": source["path"], "sha256": source["sha256"]}
+            for source in partner_profile["sources"]
+        ]
+        partner_brief = {
+            "schema_version": BRIEF_SCHEMA_VERSION,
+            "images": {
+                "count": 1,
+                "thumbnail": True,
+                "visual_partner": {
+                    "mode": "registered",
+                    "use": True,
+                    "name": partner_profile["name"],
+                    "placements": ["body:1", "thumbnail"],
+                    "source_assets": partner_source_assets,
+                    "invariants": partner_profile["invariants"],
+                    "allowed_variations": partner_profile["allowed_variations"],
+                    "style": partner_profile["style"],
+                    "palette": partner_profile["palette"],
+                    "confirmed_at": None,
+                },
+            },
+        }
+        assert validate_visual_partner_plan(workspace, partner_brief)["use"] is True
+        partner_qa_dir = root / "partner-qa"
+        partner_qa_dir.mkdir()
+        partner_qa_dir.joinpath("image-plan.md").write_text(
+            "\n".join(
+                [
+                    "# Visual partner QA",
+                    partner_profile["name"],
+                    partner_profile["invariants"],
+                    partner_profile["allowed_variations"],
+                    partner_profile["style"],
+                    partner_profile["palette"],
+                    *(source["path"] for source in partner_profile["sources"]),
+                    *(source["sha256"] for source in partner_profile["sources"]),
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        identity_qa = {
+            "name": partner_profile["name"],
+            "source_paths": [
+                source["path"] for source in partner_profile["sources"]
+            ],
+            "source_sha256": [
+                source["sha256"] for source in partner_profile["sources"]
+            ],
+            "identity_checked": True,
+        }
+        partner_package = {
+            "images": [{"visual_partner": dict(identity_qa)}],
+            "thumbnail": {"visual_partner": dict(identity_qa)},
+        }
+        validate_visual_partner_package(
+            workspace, partner_qa_dir, partner_brief, partner_package
+        )
+        partner_package["thumbnail"]["visual_partner"]["identity_checked"] = False
+        try:
+            validate_visual_partner_package(
+                workspace, partner_qa_dir, partner_brief, partner_package
+            )
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("unchecked visual-partner identity was accepted")
+        set_asset_field("登場方針", "記事ごとに確認")
+        partner_brief["images"]["visual_partner"][
+            "confirmed_at"
+        ] = "2020-01-01T00:00:00Z"
+        try:
+            validate_visual_partner_plan(workspace, partner_brief, utc_now())
+        except ManageError:
+            pass
+        else:
+            raise AssertionError(
+                "previous-run visual-partner confirmation was accepted"
+            )
+        current_confirmation = utc_now()
+        partner_brief["images"]["visual_partner"][
+            "confirmed_at"
+        ] = current_confirmation
+        assert validate_visual_partner_plan(
+            workspace, partner_brief, current_confirmation
+        )["use"] is True
+        set_asset_field("登場方針", "毎画像")
+        partner_brief["images"]["visual_partner"]["confirmed_at"] = None
+        partner_brief["images"]["visual_partner"]["source_assets"][0][
+            "sha256"
+        ] = "0" * 64
+        try:
+            validate_visual_partner_plan(workspace, partner_brief)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("visual-partner source hash mismatch was accepted")
+        set_asset_field("画像の相棒", "いない")
         assert mark_ready(workspace, "@example_user")["status"] == "ready"
         assert verify_account(workspace, "example_user")["account_match"]
         try:
@@ -2533,6 +2954,7 @@ def self_check() -> dict:
                     "count": 1,
                     "thumbnail": True,
                     "thumbnail_text": "Self check",
+                    "visual_partner": {"mode": "none", "use": False},
                 },
                 "field_origins": {"topic": "self-check"},
                 "conflicts": [],
@@ -2822,7 +3244,11 @@ def self_check() -> dict:
                         "confirmed_at": None,
                     },
                 },
-                "images": {"count": 0, "thumbnail": False},
+                "images": {
+                    "count": 0,
+                    "thumbnail": False,
+                    "visual_partner": {"mode": "none", "use": False},
+                },
                 "field_origins": {"topic": "self-check"},
                 "conflicts": [],
                 "resolved_at": utc_now(),
@@ -2904,7 +3330,11 @@ def self_check() -> dict:
                 "tone": "self-check",
                 "research": {"depth": "standard"},
                 "access": {"model": "free"},
-                "images": {"count": 0},
+                "images": {
+                    "count": 0,
+                    "thumbnail": False,
+                    "visual_partner": {"mode": "none", "use": False},
+                },
                 "field_origins": {"topic": "self-check"},
                 "conflicts": [],
                 "resolved_at": utc_now(),

@@ -43,7 +43,7 @@ flowchart TD
   L --> O
 ```
 
-Onboarding is mandatory and resumable in both automation modes. Existing Markdown is never replaced by `init`. Do not mark ready before browser selection, account confirmation, automation/outline settings, required profile defaults, Writing Profile decision, and asset validation are resolved.
+Onboarding is mandatory and resumable in both automation modes. Existing Markdown is never replaced by `init`. Do not mark ready before browser selection, account confirmation, automation/outline settings, required profile defaults, Writing Profile decision, the mandatory visual-partner question, and asset validation are resolved. `画像の相棒: いない` continues normally; `いる` requires the complete approved identity profile in [visual-identity.md](visual-identity.md); `これから作る` remains onboarding until the user approves a base design.
 
 ## Article modes
 
@@ -217,6 +217,7 @@ Manual recovery output lists the exact local `article.md`, image files in insert
 - Initial browser identity is confirmed and later runs stop on a different handle.
 - Known profile values are not asked again.
 - The Brief passes the configured automation gate before drafting.
+- Brief schema 3 resolves the visual-partner branch for every run. Planned partner placements use only the current approved source hashes and pass identity QA before CMS mutation.
 - Only user-confirmed self-authored articles affect Writing Profile.
 - Research records retain URL, publication/access dates, figures, and short quote candidates.
 - `outline_only` causes no body, image, or browser work.

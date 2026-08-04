@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Note Draft Pipeline — 導入・運用マニュアル</title>
-<meta name="description" content="テーマを一行渡すと、調査・構成・執筆・文字入り画像・noteの未公開下書き保存・再読確認まで進めるAgent Skillの導入マニュアル。">
+<meta name="description" content="テーマを一行渡すと、調査・構成・執筆・自分の画像の相棒を使った画像・noteの未公開下書き保存・再読確認まで進めるAgent Skillの導入マニュアル。">
 <link rel="canonical" href="https://azamarusuisan.github.io/AZMAEUni/">
 <meta property="og:title" content="Note Draft Pipeline — 導入・運用マニュアル">
 <meta property="og:description" content="『noteを書いて』から、文字入り画像と検証済みの未公開下書きまで。">
@@ -401,8 +401,8 @@
   <div class="hero">
     <span class="eyebrow">一度育てて、何度でも使う</span>
     <h1>「noteを書いて」で、調査から未公開下書きの保存まで終わる。</h1>
-    <p class="lede">最初に好みと文体を教えれば、次からはテーマを一行伝えるだけ。複数の情報源を調べ、無料または有料の記事、画像、出典を作り、保存後に同じ下書きを読み直して確認します。</p>
-    <p class="byline"><span>macOS / Windows</span><span>Codex · Claude Code · Hermes</span><span>2026-08-03</span></p>
+    <p class="lede">最初に好みと文体、必要なら画像の「相棒」を教えれば、次からはテーマを一行伝えるだけ。複数の情報源を調べ、無料または有料の記事、画像、出典を作り、保存後に同じ下書きを読み直して確認します。</p>
+    <p class="byline"><span>macOS / Windows</span><span>Codex · Claude Code · Hermes</span><span>2026-08-04</span></p>
   </div>
 
   <details class="mobile-toc">
@@ -469,6 +469,10 @@
       <dt>note</dt>
       <dd><strong>無料記事も有料記事も作れます。</strong>通常の下書きは保存後の再確認まで。有料記事の販売設定と公開はあなたが内容を読んでから行います。</dd>
     </div>
+    <div class="truth-row">
+      <dt>画像の相棒</dt>
+      <dd><strong>自分のマスコットやキャラクターを、記事画像の案内役にできます。</strong>初回に有無を必ず質問し、いる場合だけ本人が承認した基準画像と「変えてはいけない特徴」を固定します。いない場合は通常の画像生成へ進みます。</dd>
+    </div>
     <div class="truth-row brain">
       <dt>Brain</dt>
       <dd><strong>無料／有料の記事、画像、価格・紹介率・有料ライン案まで。</strong>現行版ではBrainへの転記、販売設定、保存を人が操作します。</dd>
@@ -481,6 +485,7 @@
 
   <p class="start-links">
     <a href="#onboarding">どんなふうに育てるかを見る →</a>
+    <a href="#visual-partner">画像の相棒を見る →</a>
     <a href="#research-paid">調査と有料記事を見る →</a>
     <a href="#write">記事を1本書かせる流れを見る →</a>
     <a class="os-win" href="#windows">Windowsを診断する →</a>
@@ -529,6 +534,12 @@
   <section class="proof" id="image-examples" aria-labelledby="image-examples-title">
     <h2 id="image-examples-title">文字入り画像も、記事の途中に入る図解も作れます。</h2>
     <p>画像生成へ丸投げせず、背景やビジュアルを作ったあとに確定した日本語を重ね、最終ファイルを一字ずつ確認します。記事内画像には、入れる場所とaltも一緒に記録します。</p>
+
+    <div class="box" id="visual-partner">
+      <span class="head">あなた専用の「画像の相棒」</span>
+      <p><strong>結論：</strong>すでにマスコットやキャラクターがいる人は、その子をアイキャッチや記事内図解へ継続して登場させられます。名前だけで毎回描き直さず、承認済み基準画像、変えてはいけない特徴、変えてよい表情やポーズ、絵柄、配色、登場方針をセットで使います。</p>
+      <p>各画像は生成後に基準画像と照合し、別キャラクター化、特徴の欠落、配色ずれ、参照画像のhash不一致があればnoteへ送る前に停止します。購入者の基準画像はその人のワークスペースだけに置き、Gitや別ユーザーへ同梱しません。</p>
+    </div>
 
     <figure class="proof-sheet">
       <div class="proof-kicker"><span>生成例 01 / アイキャッチ</span><span>1280 × 670 PNG</span></div>
@@ -682,7 +693,7 @@ git version 2.x.x
     </ol>
     <div class="box">
       <span class="head">固定版を入れる理由</span>
-      <p>Plugin本体は検証済みrelease tag <code>v0.3.4</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
+      <p>Plugin本体は検証済みrelease tag <code>v0.3.5</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
     </div>
 
     <h3>Claude Code／Hermesとも共有する</h3>
@@ -991,6 +1002,9 @@ templates/default.md   記事の型
       <div class="msg"><span class="who">エージェント</span>画面上のハンドルは <code>@your_handle</code> と読み取れました。このアカウントで合っていますか？</div>
       <div class="msg you"><span class="who">あなた</span>合ってる</div>
       <div class="msg"><span class="who">エージェント</span>では設定を聞きます。発信の目的、想定読者、いつもの記事の長さ、トーン、記事末の CTA を教えてください。</div>
+      <div class="msg"><span class="who">エージェント</span>noteの画像に継続して登場させたい「相棒」（マスコット／キャラクター）はいますか？ <strong>いる／いない／これから作る</strong> から教えてください。</div>
+      <div class="msg you"><span class="who">あなた</span>いる。基準画像もあります</div>
+      <div class="msg"><span class="who">エージェント</span>では基準画像を利用者専用の素材として登録します。変えてはいけない特徴、変えてよい表情やポーズ、基本の絵柄・配色、どの画像へ登場させるか、利用権を確認します。</div>
     </div>
 
     <h3>聞かれること</h3>
@@ -1001,11 +1015,28 @@ templates/default.md   記事の型
           <tr><td>発信</td><td>目的、想定読者、記事長、トーン、CTA</td></tr>
           <tr><td>リサーチ</td><td>調査の深さ、海外ソースの可否、対象期間、SEO/AIO、キーワード</td></tr>
           <tr><td>画像</td><td>枚数、スタイル、図解の要否、サムネイル、サムネ内文字の有無</td></tr>
+          <tr><td>画像の相棒</td><td>いる／いない／これから作る。いる場合は基準画像、不変特徴、変更可能要素、絵柄、配色、登場方針、利用権</td></tr>
           <tr><td>運用</td><td><code>自動化モード</code>（<code>guided</code>／<code>autopilot</code>）、<code>構成確認</code>（<code>毎回</code>／<code>依頼時のみ</code>）</td></tr>
           <tr><td>文体学習</td><td>自分が書いた note 記事の URL を 2〜5 本</td></tr>
           <tr><td>資産</td><td>ロゴなどのブランド素材、使い回す記事ルール</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <h3>画像の相棒は、3つに分岐します</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>回答</th><th>そのあと</th><th><code>ready</code></th></tr></thead>
+        <tbody>
+          <tr><td><strong>いない</strong></td><td>キャラクターを勝手に作らず、記事テーマに合う通常の画像を生成</td><td><span class="chip ok">進める</span></td></tr>
+          <tr><td><strong>いる</strong></td><td>本人承認の基準画像1〜5枚と不変特徴を登録。記事ごとに登場位置を決めて生成後も照合</td><td><span class="chip ok">登録完了後</span></td></tr>
+          <tr><td><strong>これから作る</strong></td><td>候補デザインを作って本人が基準画像を選ぶ。AIが勝手に本採用しない</td><td><span class="chip dev">承認待ち</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="box stop">
+      <span class="head">基準画像がないまま進めません</span>
+      <p><code>いる</code> を選んだのに基準画像・不変特徴・利用権確認が欠けている場合と、<code>これから作る</code> のままの場合は、記事制作を開始できません。登録画像はMIME、寸法、SHA-256を検査し、各記事の画像計画と生成後の本人性チェックへ同じ値を引き継ぎます。</p>
     </div>
 
     <div class="box">
@@ -1332,6 +1363,7 @@ templates/default.md   記事の型
           <tr><td>無料／有料記事、価格案、有料ライン案、<code>paid-plan.md</code></td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>有料記事の本人確認ゲート（無人実行はCMS手前で停止）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>アイキャッチ <code>1280×670</code> 正規化と実ファイル検査</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>画像の相棒（初回質問、基準画像hash、不変特徴、記事別配置、生成後の本人性QA）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>定期実行（<code>schedule-prompt</code> ／ scheduler 中立）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>Brain のハンドル照合と価格・紹介率の確認契約</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>Brain のタイトル・本文・メイン画像の入力先</td><td><span class="chip ok">実機確認済み</span></td></tr>
@@ -1361,6 +1393,7 @@ templates/default.md   記事の型
     <div class="box">
       <span class="head">アカウントは購入者ごとに分離</span>
       <p><code>Azamarusuisan</code> はGitHub上の配布者名だけです。配布物に販売者のnote handle、Googleアカウント、メール、Chromeプロファイルは入りません。購入者ごと・PCごとに空の設定から始め、現在その人が選んだブラウザセッションだけを確認します。</p>
+      <p>画像の相棒も同じです。配布者や別購入者のキャラクターは同梱せず、各利用者が承認した基準画像だけをその人のワークスペースへ保存します。</p>
     </div>
     <ul class="plain">
       <li>公開・予約投稿・販売開始・アカウント自動切替は行いません。</li>
@@ -1380,7 +1413,7 @@ templates/default.md   記事の型
 
     <details>
       <summary>インストール時に「Azamarusuisanへログイン」と表示された</summary>
-      <p>古い <code>v0.1.0</code>〜<code>v0.3.3</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.4</code> はインストール時のGitHub認証を要求しません。</p>
+      <p>古い <code>v0.1.0</code>〜<code>v0.3.3</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.5</code> はインストール時のGitHub認証を要求しません。</p>
     </details>
 
     <details>
@@ -1416,6 +1449,11 @@ templates/default.md   記事の型
     <details>
       <summary>画像生成が使えない</summary>
       <p>CMS を触る前に停止し、本文と <code>image-plan.md</code> を完成させた状態で残します。あとから画像だけ足して再開できます。</p>
+    </details>
+
+    <details>
+      <summary>画像の相棒が毎回別の見た目になる</summary>
+      <p><code>ASSETS.md</code> の基準画像、不変特徴、基本配色が具体的か確認し、<code>validate</code> を実行します。各runの <code>image-plan.md</code> に基準画像pathとSHA-256が入り、対象画像の <code>article-package.json</code> が <code>identity_checked: true</code> になるまでnoteへ送りません。基準デザインを変える場合はsetupを再開し、新しい画像を本人承認してください。</p>
     </details>
 
     <details>

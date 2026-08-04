@@ -20,12 +20,12 @@ Read all six files before each article:
 | `PROFILE.md` | Author context, purpose, readers, boundaries, brand |
 | `WRITING_PROFILE.md` | Observed style features from self-authored samples |
 | `OPERATING_RULES.md` | Automation, outline confirmation, research, free/paid access, image, SEO/AIO, CTA, and note defaults |
-| `ASSETS.md` | Approved local brand/reference assets |
+| `ASSETS.md` | Approved local brand/reference assets and the optional visual-partner identity profile |
 | `templates/default.md` | Reusable article shape |
 
 Blank values are unresolved. Ask only unresolved, conflicting, or high-risk fields. Save a current answer to these files only when the user confirms it is a reusable default.
 
-The `ready` gate requires the selected browser and note handle, automation mode and compatible outline-confirmation setting, core author purpose/theme/reader, a resolved writing-style decision and core style fields, article length/research/image/SEO/AIO/CTA defaults, and a named default template. Use an explicit value such as `なし` or `今回は行わない` instead of leaving a deliberate opt-out blank.
+The `ready` gate requires the selected browser and note handle, automation mode and compatible outline-confirmation setting, core author purpose/theme/reader, a resolved writing-style decision and core style fields, article length/research/image/SEO/AIO/CTA defaults, a visual-partner decision, and a named default template. Use an explicit value such as `なし` or `今回は行わない` instead of leaving a deliberate opt-out blank. `画像の相棒: いない` is valid; `これから作る` remains onboarding until a reference design is approved.
 
 `WRITING_PROFILE.md` stores observations and source URLs, not copied articles. With fewer than two samples, mark the profile provisional. Analyze:
 
@@ -111,6 +111,14 @@ Validation:
 
 The lock file is derived state. Edit `ASSETS.md`, not the lock.
 
+During first-use onboarding, ask whether the user has a recurring mascot or
+character for note images. `画像の相棒: いる` requires one to five approved
+local reference images, invariant and variable traits, base style, palette,
+appearance policy, and `利用権確認: 確認済み`. Reference images must be at least
+256x256. Read [visual-identity.md](visual-identity.md) for the complete branch,
+Brief, and identity-QA contract. Buyer-specific images stay in that buyer's
+workspace and are never distributed with the Skill.
+
 ## Run layout
 
 `new-run` creates:
@@ -167,7 +175,7 @@ Do not research or draft until the resolved Brief passes its automation gate. Th
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "run_id": "20260101T000000Z-topic",
   "mode": "full",
   "automation_mode": "autopilot",
@@ -212,7 +220,21 @@ Do not research or draft until the resolved Brief passes its automation gate. Th
     "style": "required when count > 0",
     "diagram": false,
     "thumbnail": true,
-    "thumbnail_text": "exact copy or null"
+    "thumbnail_text": "exact copy or null",
+    "visual_partner": {
+      "mode": "registered",
+      "use": true,
+      "name": "approved name",
+      "placements": ["body:1", "thumbnail"],
+      "source_assets": [
+        {"path": "assets/partner.png", "sha256": "approved digest"}
+      ],
+      "invariants": "exact ASSETS.md value",
+      "allowed_variations": "exact ASSETS.md value",
+      "style": "exact ASSETS.md value",
+      "palette": "exact ASSETS.md value",
+      "confirmed_at": null
+    }
   },
   "cta": null,
   "seo": false,
@@ -233,7 +255,7 @@ Set `outline_confirmed_at` before drafting when the run's `outline_confirmation`
 
 `access.model` must resolve to `free` or `paid` in every run. The saved workspace default may be `ask_each_time`; it is not a resolved run value. For `paid`, the purchase promise, non-empty free and paid deliverables, exact paywall heading, positive integer price proposal, ISO currency code, and price rationale are required. The proposal can be generated before confirmation. CMS staging additionally requires an attended `guided` run plus current-run timestamps in `price.confirmed_at` and `paywall_confirmed_at`. General Brief or outline confirmation timestamps do not satisfy these commercial confirmations.
 
-Brief schema 2 introduces the required `access` object. An in-progress schema 1 Brief created by an older release and lacking `access` remains valid as a free article, so an update does not strand an existing run. New runs always write schema 2.
+Brief schema 2 introduced the required `access` object. Brief schema 3 adds the required `images.visual_partner` decision and locks any used partner to the current approved path/hash and identity fields. An in-progress schema 1 Brief created by an older release and lacking `access` remains valid as a free article, and schema 2 remains readable without the visual-partner object, so an update does not strand an existing run. New runs always write schema 3.
 
 ## Research record
 
@@ -270,7 +292,7 @@ Each JSONL line has:
 
 Unknown publication dates remain unknown. Keep quotations short and include a page, heading, paragraph, or timestamp locator. `evidence_role` is `primary`, `analysis`, `discovery`, `experience`, or `counterpoint`. Use YouTube, SNS, reviews, note, Reddit, and Baidu-hosted communities for attributable opinion, local terminology, discovery, or experience; use primary sources for general factual claims where possible. For non-Japanese sources, keep the original title and short original-language quotation separate from the Japanese summary and translation notes. Choose platforms by question using [research-platforms.md](research-platforms.md), not by mechanically searching every listed service.
 
-Schema 2 preflight requires every non-empty JSONL row to have a unique safe `source_id`, credential-free HTTPS `url`, non-empty `platform`, `source_type`, `research_question`, and `accessed_at`, an allowed `evidence_role`, and `access_status` of `read`, `inaccessible`, or `excluded`. This records inaccessible sources without pretending they were read. Schema 1 runs retain their older record shape for update compatibility.
+Schema 2 and 3 preflight require every non-empty JSONL row to have a unique safe `source_id`, credential-free HTTPS `url`, non-empty `platform`, `source_type`, `research_question`, and `accessed_at`, an allowed `evidence_role`, and `access_status` of `read`, `inaccessible`, or `excluded`. This records inaccessible sources without pretending they were read. Schema 1 runs retain their older record shape for update compatibility.
 
 ## Article package
 
@@ -278,7 +300,7 @@ The package contains no browser selector or CMS-specific HTML:
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "run_id": "run-id",
   "title": "Title",
   "body_path": "article.md",
@@ -301,7 +323,13 @@ The package contains no browser selector or CMS-specific HTML:
       "placement": "after section 2",
       "alt": "URLから記事の材料を整理する三段階の図解",
       "text": "URLを渡すだけで、記事の材料が見える",
-      "text_verified": true
+      "text_verified": true,
+      "visual_partner": {
+        "name": "approved name",
+        "source_paths": ["assets/partner.png"],
+        "source_sha256": ["approved digest"],
+        "identity_checked": true
+      }
     }
   ],
   "thumbnail": null,
@@ -311,7 +339,7 @@ The package contains no browser selector or CMS-specific HTML:
 }
 ```
 
-An image entry contains a run-relative path, MIME, SHA-256, kind, actual pixel dimensions, placement, alt text, and any supported claim IDs. Allowed kinds are `article`, `diagram`, `comparison`, `flow`, and `thumbnail`. When a rendered image contains text, include the exact `text` and set `text_verified` only after visually checking the final file character-for-character. Body-image count must exactly match `brief.json images.count`; a thumbnail is counted separately. note thumbnails must be exactly `1280x670`.
+An image entry contains a run-relative path, MIME, SHA-256, kind, actual pixel dimensions, placement, alt text, and any supported claim IDs. Allowed kinds are `article`, `diagram`, `comparison`, `flow`, and `thumbnail`. When a rendered image contains text, include the exact `text` and set `text_verified` only after visually checking the final file character-for-character. When it contains the registered partner, include the approved source paths/hashes and set `identity_checked` only after comparing the final output with every invariant trait. Body-image count must exactly match `brief.json images.count`; a thumbnail is counted separately. note thumbnails must be exactly `1280x670`.
 
 The package `access.model` must equal the Brief. For paid articles, `paywall_after` and the price proposal must match the Brief, the exact heading must exist in `article.md`, and `paid-plan.md` must contain the same heading and amount. This proves that the paid article is structurally complete; it does not mean the CMS sale is active.
 
