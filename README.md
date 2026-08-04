@@ -47,7 +47,7 @@ GitHubリポジトリ:
 | 文体学習 | 本人が執筆した記事だけを読み、Writing Profileを作成 |
 | 差分ヒアリング | 保存済み設定を再質問せず、未解決・矛盾・高リスク項目だけ質問 |
 | URLからリサーチ | 渡されたHTTPS URLを実際に開き、要点・日付・出典を記事へ紐づけ。開けないURLは未読として報告 |
-| マルチプラットフォーム調査 | 官公庁、統計、論文、企業IR、技術文書、ニュース、海外情報、動画、SNS、レビュー、note、Brainなどから、問いに合う調査先を選択 |
+| マルチプラットフォーム調査 | 官公庁、統計、論文、企業IR、技術文書に加え、日本のnote、英語圏のReddit、Baiduを入口にした中国語圏から、問いに合う調査先を選択 |
 | 構成作成 | タイトル、見出し、画像位置、引用位置を本文より先に決定 |
 | 本文執筆 | 読みやすさ、SEO、AIO、読了率、SNS共有を考慮 |
 | 有料記事 | 無料部分で購入判断材料を示し、有料部分へ手順・実例・テンプレート・チェックリストを配置。価格案と有料ライン案も作成 |
@@ -116,7 +116,7 @@ Codexアプリを再起動し、新しいチャットで次のように依頼し
 $write-note-drafts を使ってnoteを書いて
 ```
 
-marketplace側でバージョン`v0.3.2`へ固定するため、開発途中の変更が購入者環境へ
+marketplace側でバージョン`v0.3.3`へ固定するため、開発途中の変更が購入者環境へ
 突然入ることはありません。更新版へ切り替えるときだけ、配布側が検証済みrelease
 tagを更新します。
 GitHub URLへPersonal Access Tokenを埋め込まないでください。
@@ -258,6 +258,7 @@ hermes skills list
 - 調査範囲と深さ
 - 参考サイト
 - 海外記事を使うか
+- 日本のnote、Reddit、Baidu・中国語圏を調査対象にするか
 - 優先する情報源
 - 使用する情報の期間
 - SEOを意識するか
@@ -274,9 +275,12 @@ hermes skills list
 | 企業・サービス | 公式サイト、EDINET、TDnet、SEC EDGAR、製品文書、status page、App Store |
 | 技術 | 公式docs、GitHub、GitLab、npm、PyPI、IETF、W3C、release notes |
 | 最新動向 | 当事者の発表、Reuters、AP、NHK、BBC、主要紙・業界紙 |
-| 利用者の声 | YouTube、Podcast、X、LinkedIn、Reddit、Qiita、Zenn、note、Brain、レビューサイト |
+| 日本の利用者・書き手 | note、Qiita、Zenn、はてな、Brain |
+| 英語圏の利用者 | Reddit、Hacker News、Stack Overflow、Product Hunt |
+| 中国語圏 | Baidu Search、百度贴吧、百度知道、知乎、微博、哔哩哔哩、Gitee |
+| その他の利用者の声 | YouTube、Podcast、X、LinkedIn、レビューサイト |
 
-詳しい調査先と使い分けは[Research platform router](references/research-platforms.md)にあります。検索結果のsnippetやAI要約は発見用です。重要な数値や主張は原文を開き、SNSやレビューは「その人の経験」として扱います。
+詳しい調査先と使い分けは[Research platform router](references/research-platforms.md)にあります。noteは国内の経験と語彙、Redditは英語圏の失敗例や反対意見、Baiduは中国語の検索語と元資料の発見に使います。検索結果のsnippet、百度百科、AI要約は発見用です。重要な数値や主張は日本語・英語・簡体字の原文を開き、コミュニティ投稿は「その人の経験」として扱います。
 
 ### 画像
 
@@ -345,8 +349,9 @@ flowchart TD
 - 重要度
 - 重要ポイント
 - 情報同士の矛盾
+- 原文の言語、原題、翻訳上の注意
 
-一般的な事実は公式サイト、一次情報、論文などを優先します。各記録に、調査した問い、プラットフォーム、`primary`／`analysis`／`discovery`／`experience`／`counterpoint` の役割を残します。YouTube、SNS、レビュー、noteは、発言者へ帰属できる意見や事例として扱います。公開日が不明な情報を推測で補いません。
+一般的な事実は公式サイト、一次情報、論文などを優先します。各記録に、調査した問い、プラットフォーム、`primary`／`analysis`／`discovery`／`experience`／`counterpoint` の役割を残します。YouTube、SNS、レビュー、note、Reddit、中国語コミュニティは、発言者へ帰属できる意見や事例として扱います。非日本語ソースは原題と短い原文引用を日本語要約から分け、公開日が不明な情報を推測で補いません。
 
 ### 記事構成
 

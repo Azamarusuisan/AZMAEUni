@@ -490,7 +490,7 @@
 
   <section id="research-paid" aria-labelledby="research-paid-title">
     <h2 id="research-paid-title">テーマ一行から、根拠のある無料／有料記事まで作れます。</h2>
-    <p><strong>結論：</strong>参考URLがなくても、記事で答えるべき問いを分け、官公庁・統計・論文・企業IR・技術文書・ニュース・動画・SNS・レビューなどから合う調査先を選びます。その結果を、全文無料の記事にも、無料部分と有料部分を持つ記事にもできます。</p>
+    <p><strong>結論：</strong>参考URLがなくても、記事で答えるべき問いを分け、官公庁・統計・論文・企業IR・技術文書・ニュースに加え、日本のnote、英語圏のReddit、Baiduを入口にした中国語圏から合う調査先を選びます。その結果を、全文無料の記事にも、無料部分と有料部分を持つ記事にもできます。</p>
 
     <div class="table-wrap">
       <table>
@@ -500,11 +500,14 @@
           <tr><td>数値・市場</td><td>e-Stat、国際機関、業界団体、企業IR</td><td>定義、対象期間、母集団を付ける</td></tr>
           <tr><td>研究・医療</td><td>J-STAGE、CiNii Research、PubMed、大学リポジトリ</td><td>原著、レビュー、preprintを区別</td></tr>
           <tr><td>企業・技術</td><td>公式docs、EDINET、TDnet、SEC EDGAR、GitHub、release note</td><td>現行仕様、業績、変更履歴を確認</td></tr>
-          <tr><td>現場の声</td><td>YouTube、Podcast、SNS、Qiita、Zenn、note、Brain、レビュー</td><td>個人の経験として帰属を付ける</td></tr>
+          <tr><td>日本の経験</td><td>note、Qiita、Zenn、はてな、Brain</td><td>国内の使い方、悩み、検索語を探す</td></tr>
+          <tr><td>英語圏の経験</td><td>Reddit、Hacker News、Stack Overflow</td><td>失敗例、地域差、反対意見を探す</td></tr>
+          <tr><td>中国語圏</td><td>Baidu Search、百度贴吧、百度知道、知乎、Gitee</td><td>簡体字の語彙から中国公式・企業原文へ戻る</td></tr>
+          <tr><td>その他の現場の声</td><td>YouTube、Podcast、SNS、レビュー</td><td>個人の経験として帰属を付ける</td></tr>
         </tbody>
       </table>
     </div>
-    <p>サイト数を増やすこと自体が目的ではありません。検索結果の要約だけで書かず、重要な主張は原文を開き、反対意見や限界も一度は確認します。</p>
+    <p>サイト数を増やすこと自体が目的ではありません。noteやRedditの投稿、Baiduの検索結果・百度百科を一般事実の証明には使わず、重要な主張は元の公式資料・統計・論文・製品文書まで開きます。英語・簡体字の原題と短い原文引用は日本語要約から分け、反対意見や限界も一度は確認します。</p>
 
     <h3>有料記事で完成するもの</h3>
     <div class="table-wrap">
@@ -679,7 +682,7 @@ git version 2.x.x
     </ol>
     <div class="box">
       <span class="head">固定版を入れる理由</span>
-      <p>Plugin本体は検証済みrelease tag <code>v0.3.2</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
+      <p>Plugin本体は検証済みrelease tag <code>v0.3.3</code> へ固定されています。開発途中の変更は自動で入りません。GitHubログイン、販売者アカウント、Personal Access Tokenは不要です。</p>
     </div>
 
     <h3>Claude Code／Hermesとも共有する</h3>
@@ -1310,7 +1313,7 @@ templates/default.md   記事の型
           <tr><td>Doctor／プリフライト／チェックポイント再開</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>文体学習（<code>WRITING_PROFILE.md</code>）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>ハンドル照合・調査ページの不信任扱い</td><td><span class="chip ok">実装済み</span></td></tr>
-          <tr><td>問い別のマルチプラットフォーム調査ルーター</td><td><span class="chip ok">実装済み</span></td></tr>
+          <tr><td>問い別の調査ルーター（note／Reddit／Baidu・中国語圏を含む）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>無料／有料記事、価格案、有料ライン案、<code>paid-plan.md</code></td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>有料記事の本人確認ゲート（無人実行はCMS手前で停止）</td><td><span class="chip ok">実装済み</span></td></tr>
           <tr><td>アイキャッチ <code>1280×670</code> 正規化と実ファイル検査</td><td><span class="chip ok">実装済み</span></td></tr>
@@ -1362,7 +1365,7 @@ templates/default.md   記事の型
 
     <details>
       <summary>インストール時に「Azamarusuisanへログイン」と表示された</summary>
-      <p>古い <code>v0.1.0</code>〜<code>v0.3.1</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.2</code> はインストール時のGitHub認証を要求しません。</p>
+      <p>古い <code>v0.1.0</code>〜<code>v0.3.2</code> のMarketplace設定または <code>gh repo clone</code> 手順が残っています。パスワードやTokenは入力せずキャンセルし、Marketplaceを <code>codex plugin marketplace upgrade azmaeuni</code> で更新するか、公開URLを上記の <code>git clone</code> で取得してください。<code>v0.3.3</code> はインストール時のGitHub認証を要求しません。</p>
     </details>
 
     <details>

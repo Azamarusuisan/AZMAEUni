@@ -52,6 +52,8 @@ Export a preflight-complete run and inspect the ZIP on another temporary workspa
 
 Request an article that needs one current statistic, one legal or policy claim, one company claim, and user experience. Pass when the agent routes these to suitable official/statistical, legal, corporate, and community sources; records `platform`, `research_question`, and `evidence_role`; uses community posts only as attributed experience; opens the underlying pages; and does not treat a search snippet or AI summary as primary evidence.
 
+Request a deep cross-market article with overseas research enabled and lived experience relevant. Pass when the run makes explicit coverage decisions for Japanese note, Reddit, and Baidu/Chinese-language sources; searches Chinese concepts in Simplified Chinese where useful; treats note/Reddit/Tieba/Zhidao/Zhihu posts as attributable experience or counterpoints; returns from Baidu Search/Baike to Chinese official, statistical, corporate, academic, or product originals for factual claims; keeps original-language quotes separate from Japanese summaries; and records CAPTCHA, login, regional, or robots restrictions as `inaccessible` without bypassing them. A platform may be `not_applicable` only with a topic-specific reason.
+
 ### Paid article
 
 Request a paid article. Pass when `brief.json access.model` is `paid`, the free section gives enough information to judge fit and risk, the premium section adds at least two executable deliverables, `article.md` contains the exact paywall heading, `paid-plan.md` and `article-package.json` match the price proposal and boundary, and the preflight succeeds without implying the article is on sale.
