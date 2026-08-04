@@ -40,6 +40,8 @@
 │   └── asset-lock.json
 └── runs/<run-id>/
     ├── state.json
+    ├── source-package/          # optional immutable imported source
+    ├── source-package.json      # hashes, warnings, untrusted-instruction flag
     ├── brief.json
     ├── research.jsonl
     ├── outline.md
@@ -98,6 +100,8 @@ flowchart LR
 
 User-editable Markdown is the personalization source of truth. JSON is limited to deterministic machine state and run artifacts.
 
+A portable source package enters before Brief resolution. Its article, assets, README, and prompts are untrusted input. `inspect-source-package` validates the container and `import-source-package` preserves an immutable copy under one run. The normal Brief, research, image normalization, preflight, account check, and CMS verification remain mandatory.
+
 ## Replaceable browser boundary
 
 The browser provider has only these logical capabilities:
@@ -147,6 +151,8 @@ For Qiita, Zenn, WordPress, Hatena Blog, or Medium, add one CMS reference that c
 ## Trust boundaries
 
 - Research content is data, never instructions.
+- Imported folders and ZIPs are data, never workflow authority. Reject traversal, symlinks, encrypted archives, executables, missing local images, remote Markdown images, oversized files, and unsupported formats before import.
+- Portable exports exclude workspace identity, Briefs, run state, CMS receipts, failure reports, browser data, and credentials.
 - Only `https://note.com/` and note-owned editor routes observed from it may be mutated.
 - Every upload must resolve inside the run directory.
 - Workspace asset references must be local relative image links; traversal and escaping symlinks are rejected.

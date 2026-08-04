@@ -111,6 +111,8 @@ The lock file is derived state. Edit `ASSETS.md`, not the lock.
 ```text
 runs/<run-id>/
 ├── state.json
+├── source-package/       # optional immutable imported source
+├── source-package.json  # optional import hashes and review warnings
 └── images/
 ```
 
@@ -127,6 +129,30 @@ The orchestrator adds:
 | `article-package.json` | CMS-neutral manifest and content fingerprint |
 | `cms-receipt.json` | Draft URL and save verification |
 | `failure.json` | Cause, retry, manual recovery |
+
+## Portable source package contract
+
+`inspect-source-package` accepts a directory or ZIP with exactly one UTF-8
+`article.md`. The selected package root may also contain Markdown/text/JSON
+support files and PNG/JPEG/GIF images. Every accepted file is at most 10 MB;
+the package is at most 200 files and 100 MB. Traversal, symlinks, encryption,
+Windows reserved names, case- or Unicode-normalization-insensitive collisions,
+raw HTML image tags, unsafe ZIP compression ratios, unsupported file types,
+remote Markdown images,
+and missing referenced images are rejected.
+
+`import-source-package` preserves the original bytes under `source-package/`
+and writes `source-package.json` with schema version, package digest, per-file
+SHA-256, detected image MIME/dimensions, warnings, and
+`instructions_trusted: false`. It does not write `article.md`, `images/`, the
+Brief, account state, or a CMS receipt on behalf of the normal workflow.
+
+`export-run-package` requires a locally valid preflight package and writes a
+new ZIP without overwriting an existing path. It includes the article, CMS-
+neutral article manifest, validated images/thumbnail, and available outline,
+research, image plan, and paid plan. It excludes `brief.json`, `state.json`,
+`cms-receipt.json`, `failure.json`, workspace handles, and browser data.
+Credential-like text assignments and secret-bearing URL queries block export.
 
 ## Brief contract
 
