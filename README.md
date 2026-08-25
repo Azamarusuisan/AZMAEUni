@@ -119,7 +119,7 @@ Codexアプリを再起動し、新しいチャットで次のように依頼し
 $write-note-drafts を使ってnoteを書いて
 ```
 
-marketplace側でバージョン`v0.3.7`へ固定するため、開発途中の変更が購入者環境へ
+marketplace側でバージョン`v0.3.8`へ固定するため、開発途中の変更が購入者環境へ
 突然入ることはありません。更新版へ切り替えるときだけ、配布側が検証済みrelease
 tagを更新します。
 GitHub URLへPersonal Access Tokenを埋め込まないでください。

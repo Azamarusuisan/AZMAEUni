@@ -255,7 +255,7 @@ Set `outline_confirmed_at` before drafting when the run's `outline_confirmation`
 
 `access.model` must resolve to `free` or `paid` in every run. The saved workspace default may be `ask_each_time`; it is not a resolved run value. For `paid`, the purchase promise, non-empty free and paid deliverables, exact paywall heading, positive integer price proposal, ISO currency code, and price rationale are required. The proposal can be generated before confirmation. CMS staging additionally requires an attended `guided` run plus current-run timestamps in `price.confirmed_at` and `paywall_confirmed_at`. General Brief or outline confirmation timestamps do not satisfy these commercial confirmations.
 
-Brief schema 2 introduced the required `access` object. Brief schema 3 adds the required `images.visual_partner` decision and locks any used partner to the current approved path/hash and identity fields. An in-progress schema 1 Brief created by an older release and lacking `access` remains valid as a free article, and schema 2 remains readable without the visual-partner object, so an update does not strand an existing run. New runs always write schema 3.
+Brief schema 2 introduced the required `access` object. Brief schema 3 adds the required `images.visual_partner` decision and locks any used partner to the current approved path/hash and identity fields. Legacy schema 1/2 Briefs remain readable for intake and migration, but strict preflight requires migrating the Brief to schema 3 and regenerating article-package schema 4. New runs always write Brief schema 3.
 
 ## Research record
 
@@ -300,7 +300,7 @@ The package contains no browser selector or CMS-specific HTML:
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "run_id": "run-id",
   "title": "Title",
   "body_path": "article.md",
@@ -341,7 +341,7 @@ The package contains no browser selector or CMS-specific HTML:
 
 An image entry contains a run-relative path, MIME, SHA-256, kind, actual pixel dimensions, placement, alt text, and any supported claim IDs. Allowed kinds are `article`, `diagram`, `comparison`, `flow`, and `thumbnail`. When a rendered image contains text, include the exact `text` and set `text_verified` only after visually checking the final file character-for-character. When it contains the registered partner, include the approved source paths/hashes and set `identity_checked` only after comparing the final output with every invariant trait. Body-image count must exactly match `brief.json images.count`; a thumbnail is counted separately. note thumbnails must be exactly `1280x670`.
 
-For schema 3 packages, preflight recalculates `content_fingerprint` from `article.md`; compares the package run ID, body path, optional H1, and ordered H2/H3 headings; validates unique credential-free HTTPS links and inline hashtags; and rejects any `claim_sources` ID absent from `research.jsonl`. Editing the article after packaging therefore requires regenerating the affected package fields and rerunning preflight.
+For schema 4 packages, preflight recalculates `content_fingerprint` from `article.md`; compares the package run ID, body path, optional H1, and ordered H2/H3 headings; requires `links` to exactly match the ordered unique destinations of descriptive Markdown anchors; rejects exposed raw URLs, non-HTTPS or URL-only anchors, pseudo-lists, high-confidence collapsed list items, and code-like paragraphs outside fences; validates inline hashtags; and rejects any `claim_sources` ID absent from `research.jsonl`. Legacy schema 3 packages must be regenerated before preflight. Editing the article after packaging therefore requires regenerating the affected package fields and rerunning preflight.
 
 The package `access.model` must equal the Brief. For paid articles, `paywall_after` and the price proposal must match the Brief, the exact heading must exist in `article.md`, and `paid-plan.md` must contain the same heading and amount. This proves that the paid article is structurally complete; it does not mean the CMS sale is active.
 
@@ -349,11 +349,11 @@ The package `access.model` must equal the Brief. For paid articles, `paywall_aft
 
 `state.json` records the current phase, status, completed phases, immutable idempotency key, opaque draft reference, sanitized draft URL, and timestamps. Valid statuses are `pending`, `running`, `waiting_user`, `completed`, `failed`, and `save_unverified`.
 
-A successful schema 2 receipt is:
+A successful schema 3 receipt is:
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "cms": "note",
   "draft_url": "https://note.com/...",
   "saved_at": "ISO-8601 timestamp",
@@ -368,7 +368,15 @@ A successful schema 2 receipt is:
     "verified_image_paths": ["images/diagram-1.png", "images/diagram-2.png"],
     "thumbnail_present": true,
     "verified_thumbnail_path": "images/thumbnail.png",
-    "inline_hashtags_present": true
+    "inline_hashtags_present": true,
+    "rich_text": {
+      "headings_match": true,
+      "lists_match": true,
+      "quotes_match": true,
+      "code_blocks_match": true,
+      "anchor_links_match": true,
+      "no_exposed_raw_urls": true
+    }
   },
   "published": false
 }
@@ -376,9 +384,9 @@ A successful schema 2 receipt is:
 
 If the safe reread cannot confirm the content, use `save_unverified`; never call it success.
 
-New runs write receipt schema 2. `checkpoint --phase verify --status completed` validates the receipt against `article-package.json` and rejects missing or reordered body images, a missing thumbnail, a mismatched draft URL, non-false `published`, or any false core verification flag. Schema 1 remains readable for an in-progress older run, but still requires `required_images_present: true` and any required thumbnail before completion.
+New runs write receipt schema 3. `checkpoint --phase verify --status completed` validates the receipt against `article-package.json` and rejects missing or reordered body images, a missing thumbnail, a mismatched draft URL, non-false `published`, any false core verification flag, or missing/false `rich_text` verification. Legacy schema 1/2 receipts remain readable only for `save_unverified`; verified completion requires rereading the draft and migrating to schema 3.
 
-A partial schema 2 draft keeps the same count, path, and thumbnail fields, sets `verification.status: save_unverified`, and adds a non-empty `missing_required_items` list containing every unobserved required image path. This permits the same draft to be resumed without pretending the article is complete.
+A partial schema 3 draft keeps the same count, path, and thumbnail fields, sets `verification.status: save_unverified`, and adds a non-empty `missing_required_items` list containing every unobserved required image path. This permits the same draft to be resumed without pretending the article is complete.
 
 ## Failure contract
 

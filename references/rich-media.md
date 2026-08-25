@@ -26,7 +26,7 @@ Open each external URL read-only before relying on it. Use only credential-free 
 
 After insertion, verify both the visible anchor text and final destination. Do not rely on search-result redirects, ad links, shortened URLs, tracking parameters, or a title inferred from a snippet. For technical facts, prefer official documentation; for company cases, identify whether the source is a corporate statement, vendor case, employee post, or independent report.
 
-If rich anchor creation is unavailable, insert a readable caption plus the canonical raw HTTPS URL as a clickable fallback. Do not claim the anchor was verified.
+If rich anchor creation is unavailable, keep the readable caption, save the draft as `save_unverified`, and report the missing link. Do not expose the raw URL in ordinary prose or claim the anchor was verified.
 
 ## Video and embeds
 
@@ -61,6 +61,8 @@ Before stage completion, confirm:
 - lists are actual list blocks rather than lines containing hyphens or numbers;
 - code samples are code blocks and contain no secret or credential;
 - links are clickable and canonical;
+- every normal link has meaningful visible text; raw URLs appear only inside semantic code blocks;
 - every required embed renders once in the intended position;
 - images, embeds, and headings are not duplicated;
 - the article remains readable when an embed is unavailable because its caption and fallback link are present.
+- the reread contains no pseudo-list paragraphs or collapsed command, JSON, configuration, or log paragraphs.

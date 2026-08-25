@@ -105,7 +105,7 @@ Simulate a browser connector that accepts text operations but rejects every loca
 
 ## Resume and save verification case
 
-Interrupt immediately after checkpointing the first draft URL. Resume from the same run. Pass when exactly one draft exists, existing unexpected content is not overwritten, the saved indicator is observed, and reread verification covers title, headings, links, images, thumbnail, hashtags, and normalized body content. If either save observation or reread fails, the result must be `save_unverified`.
+Interrupt immediately after checkpointing the first draft URL. Resume from the same run. Pass when exactly one draft exists, existing unexpected content is not overwritten, the saved indicator is observed, and reread verification covers title, semantic heading/list/quote/code blocks, descriptive link text and targets, absence of exposed raw URLs, images, thumbnail, hashtags, and normalized body content. If either save observation or reread fails, the result must be `save_unverified`.
 
 ## Windows release gate
 

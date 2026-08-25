@@ -129,7 +129,7 @@ heading blockごとにlevelと本文を適用する。現在のeditorが提供�
 
 ### Links
 
-`http` または `https` の検証済みURLだけを使用する。対象テキストとlink controlを一意に確認し、適用後にanchor textと遷移先を再読する。リンク先を開く必要がある場合も、現在の下書きを失わない読取り方法だけを使う。
+credentialを含まない検証済み`https` URLだけを使用する。意味のある対象テキストとlink controlを一意に確認し、適用後にanchor textと遷移先を再読する。URL自体を表示名にせず、通常段落へ生URLを残さない。link controlを安全に使えない場合は`save_unverified`とする。リンク先を開く必要がある場合も、現在の下書きを失わない読取り方法だけを使う。
 
 ### Code blocks
 
@@ -176,6 +176,9 @@ previewが失敗した場合は同じcanonical URLのcaptionと通常linkを残�
 - 正規化した本文block、heading level、順序のfingerprint一致
 - code fenceごとの正規化全文と順序の一致、および通常本文へのcode漏れが0件
 - anchor textとURL
+- unordered／ordered listの種類、全item、順序
+- quote blockの全文と順序
+- 生URL、疑似list、平文化したcodeが0件
 - inline hashtags
 - 必須inline imageの数と順序
 - thumbnailの存在
@@ -184,13 +187,19 @@ previewが失敗した場合は同じcanonical URLのcaptionと通常linkを残�
 
 保存表示だけ、URL取得だけ、本文の一部一致だけでは成功にしない。両条件を満たした場合だけ `verification.status: verified`、`published: false` のreceiptを保存する。判断不能なら `save_unverified` とする。
 
-schema 2 receiptでは `article-package.json` と次を一致させる。
+schema 3 receiptでは `article-package.json` と次を一致させる。
 
 - `expected_body_image_count`: manifestのbody image数
 - `observed_body_image_count`: 再読で確認したbody image数
 - `verified_image_paths`: manifestと同じ順序のrun相対path
 - `thumbnail_present`: thumbnail必須時は `true`
 - `verified_thumbnail_path`: 確認したthumbnailのrun相対path
+- `rich_text.headings_match`: heading level、全文、順序が一致
+- `rich_text.lists_match`: list種類、全item、順序が一致
+- `rich_text.quotes_match`: quote全文、順序が一致
+- `rich_text.code_blocks_match`: code block全文、順序が一致し、本文への漏れがない
+- `rich_text.anchor_links_match`: 表示名とHTTPS遷移先が一致
+- `rich_text.no_exposed_raw_urls`: code block外の生URLが0件
 
 一つでも不足、順序不一致、観察不能なら `verified` にしない。本文だけ一致した状態を記事全体の完了として報告しない。
 

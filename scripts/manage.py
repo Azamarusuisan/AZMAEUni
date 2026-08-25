@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import html
 import json
 import os
 import re
@@ -32,15 +33,33 @@ MAX_SOURCE_PACKAGE_FILES = 200
 MAX_SOURCE_PACKAGE_BYTES = 100 * 1024 * 1024
 SCHEMA_VERSION = 1
 BRIEF_SCHEMA_VERSION = 3
-RECEIPT_SCHEMA_VERSION = 2
+ARTICLE_PACKAGE_SCHEMA_VERSION = 4
+RECEIPT_SCHEMA_VERSION = 3
 SOURCE_PACKAGE_SCHEMA_VERSION = 1
 IMAGE_LINK_RE = re.compile(
     r'(?<!\\)!\[[^\]]*]\(\s*(?P<target><[^>]+>|[^)\s]+)'
     r'(?:\s+(?:"[^"]*"|\'[^\']*\'))?\s*\)'
 )
+MARKDOWN_LINK_RE = re.compile(
+    r'(?<!!)\[(?P<text>[^\]\n]+)]\(\s*'
+    r'(?P<url><https://[^>\s]+>|https://[^)\s]+)'
+    r'(?:\s+(?:"[^"]*"|\'[^\']*\'))?\s*\)',
+    re.IGNORECASE,
+)
+RAW_URL_RE = re.compile(r"https?://[^\s<>()\[\]{}\"']+", re.IGNORECASE)
+NON_HTTPS_URL_RE = re.compile(
+    r"\b(?:(?!https:)[A-Za-z][A-Za-z0-9+.-]*://"
+    r"|(?:blob|data|javascript|mailto|magnet|tel|urn):)\S+",
+    re.IGNORECASE,
+)
+PROTOCOL_RELATIVE_URL_RE = re.compile(r"(?:^|[\s(])//[A-Za-z0-9][^\s<>()\[\]{}\"']*")
+INLINE_CODE_RE = re.compile(
+    r"(?<![\\`])(?P<ticks>`+)(?!`).*?(?<![\\`])(?P=ticks)(?!`)"
+)
+MARKDOWN_ESCAPE_RE = re.compile(r"\\([!\"#$%&'()*+,./:;<=>?@\[\\\]^_`{|}~-])")
 HTML_IMAGE_RE = re.compile(r"<\s*img\b", re.IGNORECASE)
 FENCED_CODE_RE = re.compile(
-    r"^[ \t]*(`{3,}|~{3,}).*?^[ \t]*\1[ \t]*$", re.MULTILINE | re.DOTALL
+    r"^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1[ \t]*$", re.MULTILINE | re.DOTALL
 )
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")
 ACCOUNT_HANDLE_RE = re.compile(r"^[A-Za-z0-9_]{3,64}$")
@@ -76,7 +95,9 @@ POSSIBLE_SECRET_TEXT_RE = re.compile(
     re.IGNORECASE,
 )
 SENSITIVE_QUERY_RE = re.compile(
-    r"[?&](?:access_?key|api_?key|auth|signature|token)=",
+    r"[?&#;](?:(?:[A-Za-z0-9.-]+[_-])?"
+    r"(?:credential|password|secret|signature|token)"
+    r"|(?:access|api)[_-]?key|auth(?:orization)?|code|jwt|key|session(?:[_-]?id)?|sig)=",
     re.IGNORECASE,
 )
 WINDOWS_RESERVED_NAMES = {
@@ -1628,13 +1649,15 @@ def validate_source_url(value: object) -> str:
         raise ManageError("brief.json references must contain URL strings or objects")
     parsed = urlsplit(raw_url)
     if (
-        parsed.scheme != "https"
+        parsed.scheme.lower() != "https"
         or not parsed.hostname
         or parsed.username
         or parsed.password
+        or SENSITIVE_QUERY_RE.search(raw_url)
+        or SENSITIVE_QUERY_RE.search(unquote(raw_url))
     ):
         raise ManageError("reference URLs must use HTTPS and contain no credentials")
-    return raw_url
+    return urlunsplit(("https", parsed.netloc, parsed.path, parsed.query, parsed.fragment))
 
 
 def _require_nonempty_string_list(value: object, field: str) -> None:
@@ -1928,12 +1951,23 @@ def validate_research_records(run_dir: Path, brief: dict) -> set[str]:
     return seen_ids
 
 
+def markdown_visible_text(text: str) -> str:
+    return html.unescape(MARKDOWN_ESCAPE_RE.sub(r"\1", text))
+
+
+def markdown_fence_marker(line: str) -> re.Match[str] | None:
+    marker = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+    if marker and marker.group(1).startswith("`") and "`" in marker.group(2):
+        return None
+    return marker
+
+
 def markdown_headings(text: str) -> tuple[list[str], list[str]]:
     h1: list[str] = []
     body: list[str] = []
     fence: tuple[str, int] | None = None
     for line in text.splitlines():
-        marker = re.match(r"^[ \t]*(`{3,}|~{3,})(.*)$", line)
+        marker = markdown_fence_marker(line)
         if fence is not None:
             if (
                 marker
@@ -1961,13 +1995,192 @@ def markdown_headings(text: str) -> tuple[list[str], list[str]]:
     return h1, body
 
 
+def markdown_rich_text(text: str) -> dict:
+    anchors: list[dict[str, str]] = []
+    unordered_items = 0
+    ordered_items = 0
+    quote_blocks = 0
+    code_blocks = 0
+    fence: tuple[str, int] | None = None
+
+    for line_number, line in enumerate(text.splitlines(), 1):
+        marker = markdown_fence_marker(line)
+        if fence is not None:
+            if (
+                marker
+                and marker.group(1)[0] == fence[0]
+                and len(marker.group(1)) >= fence[1]
+                and not marker.group(2).strip()
+            ):
+                fence = None
+            continue
+        if marker:
+            fence = (marker.group(1)[0], len(marker.group(1)))
+            code_blocks += 1
+            continue
+
+        without_code = INLINE_CODE_RE.sub("", line)
+        if re.search(r"(?<!\\)`", without_code):
+            raise ManageError(
+                f"article.md line {line_number} has an unmatched or multiline code span; use a fenced code block"
+            )
+        for match in MARKDOWN_LINK_RE.finditer(without_code):
+            label = markdown_visible_text(match.group("text")).strip()
+            raw_url = match.group("url")
+            if not raw_url.startswith("<") and "(" in raw_url:
+                raise ManageError(
+                    f"article.md line {line_number} must wrap a URL containing parentheses in angle brackets"
+                )
+            target = raw_url.strip("<>")
+            if markdown_visible_text(target) != target:
+                raise ManageError(
+                    f"article.md line {line_number} has an escaped or entity-encoded link target"
+                )
+            url = validate_source_url(target)
+            if (
+                not label
+                or RAW_URL_RE.fullmatch(label)
+                or NON_HTTPS_URL_RE.fullmatch(label)
+                or PROTOCOL_RELATIVE_URL_RE.fullmatch(label)
+            ):
+                raise ManageError(
+                    f"article.md line {line_number} has URL text instead of a descriptive anchor"
+                )
+            anchors.append({"text": label, "url": url})
+        prose_source = MARKDOWN_LINK_RE.sub(
+            lambda match: match.group("text"), without_code
+        )
+        visible_source = markdown_visible_text(prose_source)
+        link_like_source = IMAGE_LINK_RE.sub("", prose_source)
+        if (
+            re.search(r"(?<!\\)]\s*(?:\(|\[)", link_like_source)
+            or re.match(r"^[ \t]*\[[^\]\n]+]:", prose_source)
+            or re.search(r"<\s*a\b", visible_source, re.IGNORECASE)
+            or re.search(
+                r"<[A-Za-z][A-Za-z0-9+.-]*:[^>\n]+>", visible_source
+            )
+        ):
+            raise ManageError(
+                f"article.md line {line_number} has a non-HTTPS or unsupported link"
+            )
+        prose = visible_source
+
+        if (
+            RAW_URL_RE.search(prose)
+            or NON_HTTPS_URL_RE.search(prose)
+            or PROTOCOL_RELATIVE_URL_RE.search(prose)
+            or re.search(
+                r"(?:^|\s)www\.[^\s<>()\[\]{}\"']+", prose, re.IGNORECASE
+            )
+        ):
+            raise ManageError(
+                f"article.md line {line_number} has an exposed raw URL outside code"
+            )
+        if re.search(r"(?:^|\s)[・●◦○•][ \t]*(?=\S)", prose) or re.search(
+            r"(?:^|\s)\d+[．）][ \t]*(?=\S)", prose
+        ):
+            raise ManageError(
+                f"article.md line {line_number} has a pseudo-list marker"
+            )
+
+        unordered = re.match(r"^[ \t]*[-+*][ \t]+\S", prose)
+        ordered = re.match(r"^[ \t]*\d+[.)][ \t]+\S", prose)
+        if unordered:
+            unordered_items += 1
+        if ordered:
+            ordered_items += 1
+        collapsed_unordered = unordered and re.search(
+            r"(?:^|\s)[-+*][ \t]+(?!(?:\d+)(?:\s|$)|[A-Z][ \t]*$)\S",
+            prose[unordered.end() :],
+        )
+        collapsed_ordered = ordered and re.search(
+            r"(?:^|\s)\d+[.)][ \t]+\S", prose[ordered.end() :]
+        )
+        if collapsed_unordered or collapsed_ordered:
+            raise ManageError(
+                f"article.md line {line_number} has multiple list items on one line"
+            )
+        if re.match(r"^[ \t]*>[ \t]*\S", prose):
+            quote_blocks += 1
+
+        stripped = prose.strip()
+        json_like = False
+        if stripped.startswith(("{", "[")) and stripped.endswith(("}", "]")):
+            try:
+                json.loads(stripped)
+                json_like = True
+            except json.JSONDecodeError:
+                pass
+        command_after_copy_label = re.search(
+            r"コピー(?:用|できる|する)[^\n]*(?:\bgit\b|\bcd\b|\bcodex\b|\bnpm\b|\bpnpm\b|\bcurl\b)",
+            prose,
+            re.IGNORECASE,
+        )
+        standalone_command = not stripped.endswith(("。", ".", "!", "?")) and re.match(
+            r"^(?:"
+            r"\$[ \t]+\S"
+            r"|git[ \t]+(?:add|branch|checkout|clone|commit|diff|fetch|init|log|ls-remote|pull|push|remote|restore|rev-parse|status|switch|tag)\b"
+            r"|cd[ \t]+\S+[ \t]*$"
+            r"|(?:npm|pnpm)[ \t]+(?:add|build|ci|create|exec|install|publish|remove|run|start|test|update)\b"
+            r"|npx[ \t]+\S"
+            r"|curl[ \t]+(?:-|https?://)"
+            r"|python[ \t]+(?:-|\S+\.py\b)"
+            r"|pip[ \t]+(?:freeze|install|list|uninstall)\b"
+            r"|node[ \t]+(?:-|\S+\.(?:cjs|js|mjs)\b)"
+            r"|docker[ \t]+(?:build|compose|exec|pull|push|run)\b"
+            r"|gh[ \t]+(?:api|auth|issue|pr|release|repo|run|workflow)\b"
+            r"|wrangler[ \t]+(?:d1|deploy|dev|kv|r2|secret|tail)\b"
+            r")",
+            stripped,
+        )
+        assignments = re.findall(r"\b[A-Za-z][A-Za-z0-9_.-]*=\S+", prose)
+        assignment_line = re.fullmatch(
+            r"[A-Za-z][A-Za-z0-9_.-]*=\S+", stripped
+        )
+        structured_line = stripped in {"{", "}", "[", "]", "},", "],"} or re.match(
+            r'^"[^"\n]+"\s*:\s*\S', stripped
+        )
+        validation_log = len(
+            re.findall(r"\b(?:OK|PASS|FAIL|UNVERIFIED)\b", prose)
+        ) >= 3 or re.match(
+            r"^[A-Za-z0-9_./ -]+:\s*(?:OK|PASS|FAIL|UNVERIFIED)\b",
+            stripped,
+        )
+        if (
+            json_like
+            or command_after_copy_label
+            or standalone_command
+            or structured_line
+            or len(assignments) >= 2
+            or assignment_line
+            or validation_log
+        ):
+            raise ManageError(
+                f"article.md line {line_number} has code-like text outside a code fence"
+            )
+
+    if fence is not None:
+        raise ManageError("article.md has an unclosed code fence")
+    return {
+        "anchors": anchors,
+        "unordered_list_items": unordered_items,
+        "ordered_list_items": ordered_items,
+        "quote_blocks": quote_blocks,
+        "code_blocks": code_blocks,
+    }
+
+
 def validate_article_package(
     run_dir: Path, state: dict, brief: dict, package: dict, source_ids: set[str]
 ) -> None:
-    if brief.get("schema_version") in {1, 2}:
-        return
-    if package.get("schema_version") != BRIEF_SCHEMA_VERSION:
-        raise ManageError("article-package.json has an unsupported schema_version")
+    if brief.get("schema_version") != BRIEF_SCHEMA_VERSION:
+        raise ManageError(
+            f"strict preflight requires brief.json schema_version {BRIEF_SCHEMA_VERSION}; migrate the legacy run"
+        )
+    if package.get("schema_version") != ARTICLE_PACKAGE_SCHEMA_VERSION:
+        raise ManageError(
+            f"article-package.json must use schema_version {ARTICLE_PACKAGE_SCHEMA_VERSION}; regenerate legacy packages"
+        )
     if package.get("run_id") != state.get("run_id"):
         raise ManageError("article package run_id does not match state.json")
     if package.get("body_path") != "article.md":
@@ -1991,10 +2204,15 @@ def validate_article_package(
     links = package.get("links")
     if not isinstance(links, list) or any(not isinstance(url, str) for url in links):
         raise ManageError("article package links must be a list of HTTPS URLs")
-    if len(set(links)) != len(links):
+    validated_links = [validate_source_url(url) for url in links]
+    if len(set(validated_links)) != len(validated_links):
         raise ManageError("article package links contain duplicates")
-    for url in links:
-        validate_source_url(url)
+    rich_text = markdown_rich_text(article_text)
+    article_links = list(dict.fromkeys(item["url"] for item in rich_text["anchors"]))
+    if validated_links != article_links:
+        raise ManageError(
+            "article package links do not match descriptive anchors in article.md"
+        )
 
     hashtags = package.get("inline_hashtags")
     if not isinstance(hashtags, list) or any(
@@ -2241,7 +2459,7 @@ def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> 
 def validate_cms_receipt(run_dir: Path, state: dict, expected_status: str) -> None:
     receipt = read_json(run_dir / "cms-receipt.json")
     schema_version = receipt.get("schema_version")
-    if schema_version not in {1, RECEIPT_SCHEMA_VERSION}:
+    if schema_version not in {1, 2, RECEIPT_SCHEMA_VERSION}:
         raise ManageError("cms-receipt.json has an unsupported schema_version")
     if receipt.get("cms") != "note":
         raise ManageError("cms-receipt.json cms must be note")
@@ -2261,6 +2479,10 @@ def validate_cms_receipt(run_dir: Path, state: dict, expected_status: str) -> No
     if verification.get("status") != expected_status:
         raise ManageError(
             f"cms-receipt.json verification.status must be {expected_status}"
+        )
+    if expected_status == "verified" and schema_version != RECEIPT_SCHEMA_VERSION:
+        raise ManageError(
+            f"verified receipts must use schema_version {RECEIPT_SCHEMA_VERSION}; reread the draft and migrate the receipt"
         )
 
     package = read_json(run_dir / "article-package.json")
@@ -2338,6 +2560,21 @@ def validate_cms_receipt(run_dir: Path, state: dict, expected_status: str) -> No
                     + ", ".join(absent)
                 )
         return
+
+    if schema_version == RECEIPT_SCHEMA_VERSION:
+        rich_text = verification.get("rich_text")
+        if not isinstance(rich_text, dict):
+            raise ManageError("verified receipt requires rich_text verification")
+        for field in (
+            "headings_match",
+            "lists_match",
+            "quotes_match",
+            "code_blocks_match",
+            "anchor_links_match",
+            "no_exposed_raw_urls",
+        ):
+            if rich_text.get(field) is not True:
+                raise ManageError(f"verified receipt requires rich_text.{field}=true")
 
     for field in (
         "saved_state_seen",
@@ -2512,9 +2749,95 @@ def self_check() -> dict:
     assert validate_source_url({"url": "https://example.com/source"}) == (
         "https://example.com/source"
     )
+    assert validate_source_url("HTTPS://example.com/source") == (
+        "https://example.com/source"
+    )
     assert markdown_headings(
         "# Title\n\n```md\n## Not a heading\n```\n\n## Real heading\n"
     ) == (["Title"], ["Real heading"])
+    rich_text = markdown_rich_text(
+        "[Official guide](https://example.com/docs)\n\n"
+        "[Wiki](<https://en.wikipedia.org/wiki/Function_(computer_programming)>)\n"
+        "[Upper](HTTPS://example.com/upper)\n"
+        "\\`[Escaped delimiter](https://example.com/escaped)\\`\n"
+        "`` [not a link](https://example.com/private) ` code ``\n\n"
+        "Git is a version control system.\n\n"
+        "git is a distributed version control system.\n"
+        "python makes automation easier.\n"
+        "node represents one item.\n"
+        "docker improves reproducibility.\n\n"
+        "Data: this section explains the result.\n"
+        "JavaScript: a language for the web.\n"
+        "URN: Uniform Resource Name.\n\n"
+        "git clone is useful prose.\n"
+        "![Diagram](images/diagram.png)\n\n"
+        "- first\n- second\n- Years 2020 - 2024\n\n1. one\n2. two\n\n> quote\n\n"
+        "```sh\ngit clone https://example.com/repo.git\n1．code text\n```\n"
+    )
+    assert rich_text == {
+        "anchors": [
+            {"text": "Official guide", "url": "https://example.com/docs"},
+            {
+                "text": "Wiki",
+                "url": "https://en.wikipedia.org/wiki/Function_(computer_programming)",
+            },
+            {"text": "Upper", "url": "https://example.com/upper"},
+            {"text": "Escaped delimiter", "url": "https://example.com/escaped"},
+        ],
+        "unordered_list_items": 3,
+        "ordered_list_items": 2,
+        "quote_blocks": 1,
+        "code_blocks": 1,
+    }
+    for invalid_rich_text in (
+        "Guide https://example.com/docs\n",
+        "Guide HTTPS://example.com/docs\n",
+        "Guide https\\://example.com/docs\n",
+        "Guide https&#58;//example.com/docs\n",
+        "Visit ftp://example.com/file\n",
+        "mailto:user@example.com\n",
+        "file:///etc/passwd\n",
+        "javascript:alert(1)\n",
+        "//example.com/path\n",
+        "[https://example.com/docs](https://example.com/docs)\n",
+        "[mailto:user@example.com](https://example.com/docs)\n",
+        "[https\\://example.com/docs](https://example.com/docs)\n",
+        "[https&#58;//example.com/docs](https://example.com/docs)\n",
+        "[Entity target](https://example.com/docs?a=1&amp;b=2)\n",
+        "[Bad](javascript:alert(1))\n",
+        "[Relative](/docs)\n",
+        "[safe [nested]](javascript:alert(1))\n",
+        "[safe [nested]](/docs)\n",
+        "[safe \\] label](javascript:alert(1))\n",
+        "[Reference][docs]\n",
+        "<a href=\"javascript:alert(1)\">Bad</a>\n",
+        "<mailto:test@example.com>\n",
+        "Visit www.example.com/docs\n",
+        "[Wiki](https://example.com/Function_(programming))\n",
+        "[Secret](https://example.com/docs?token=secret)\n",
+        "    ```\nGuide https://example.com/docs\n    ```\n",
+        "```text`invalid\nGuide https://example.com/docs\n```\n",
+        "`multiline\n[Hidden](https://example.com/private)\nspan`\n",
+        "npm install package\n",
+        "git clone repository\n",
+        "{\n  \"status\": \"pass\"\n}\n",
+        "validate.mjs: OK\n",
+        "1．setup\n",
+        "・ item\n",
+        "• item\n",
+        "1. first 2. second\n",
+        "- first - second\n",
+        "- first - B second\n",
+        "- first ・second\n",
+        "コピー用：git clone repo cd repo\n",
+        '{"status":"pass"}\n',
+    ):
+        try:
+            markdown_rich_text(invalid_rich_text)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError(f"invalid rich text was accepted: {invalid_rich_text!r}")
     try:
         markdown_headings("# Title\n\n```text\nunclosed\n")
     except ManageError:
@@ -2531,6 +2854,18 @@ def self_check() -> dict:
     for unsafe_reference in (
         "http://example.com/article",
         "https://user:secret@example.com/article",
+        "https://example.com/article?api_key=secret",
+        "https://example.com/article?access_token=secret",
+        "https://example.com/article?refresh_token=secret",
+        "https://example.com/article?oauth_token=secret",
+        "https://example.com/article?client_secret=secret",
+        "https://example.com/article?key=secret",
+        "https://example.com/article?password=secret",
+        "https://example.com/article#token=secret",
+        "https://example.com/article?%61pi%5Fkey=secret",
+        "https://example.com/article#%74oken=secret",
+        "https://example.com/article?X-Amz-Credential=secret&X-Amz-Signature=secret",
+        "https://example.com/article?X-Goog-Credential=secret",
         "not-a-url",
     ):
         try:
@@ -3136,7 +3471,7 @@ def self_check() -> dict:
         write_json(
             run_dir / "article-package.json",
             {
-                "schema_version": BRIEF_SCHEMA_VERSION,
+                "schema_version": ARTICLE_PACKAGE_SCHEMA_VERSION,
                 "run_id": "self-check",
                 "title": "Self check",
                 "body_path": "article.md",
@@ -3218,6 +3553,16 @@ def self_check() -> dict:
             raise AssertionError("stale article headings were accepted")
         package["headings"] = []
         write_json(run_dir / "article-package.json", package)
+        package["links"] = ["https://example.com/not-in-article"]
+        write_json(run_dir / "article-package.json", package)
+        try:
+            checkpoint(workspace, "self-check", "preflight", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("article package link absent from article.md was accepted")
+        package["links"] = []
+        write_json(run_dir / "article-package.json", package)
         package = read_json(run_dir / "article-package.json")
         del package["images"][0]["placement"]
         write_json(run_dir / "article-package.json", package)
@@ -3247,7 +3592,27 @@ def self_check() -> dict:
         else:
             raise AssertionError("unverified body image text was accepted")
         package["images"][0]["text_verified"] = True
+        package["schema_version"] = 3
         write_json(run_dir / "article-package.json", package)
+        try:
+            checkpoint(workspace, "self-check", "preflight", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("legacy article package bypassed rich-text checks")
+        package["schema_version"] = ARTICLE_PACKAGE_SCHEMA_VERSION
+        write_json(run_dir / "article-package.json", package)
+        brief = read_json(run_dir / "brief.json")
+        brief["schema_version"] = 2
+        write_json(run_dir / "brief.json", brief)
+        try:
+            checkpoint(workspace, "self-check", "preflight", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("legacy Brief bypassed strict preflight")
+        brief["schema_version"] = BRIEF_SCHEMA_VERSION
+        write_json(run_dir / "brief.json", brief)
         checkpoint(workspace, "self-check", "preflight", "completed", None)
         exported_zip = root / "書き出し 記事パッケージ.zip"
         exported = export_run_package(
@@ -3300,6 +3665,14 @@ def self_check() -> dict:
                 "thumbnail_present": False,
                 "verified_thumbnail_path": None,
                 "inline_hashtags_present": True,
+                "rich_text": {
+                    "headings_match": True,
+                    "lists_match": True,
+                    "quotes_match": True,
+                    "code_blocks_match": True,
+                    "anchor_links_match": True,
+                    "no_exposed_raw_urls": True,
+                },
             },
             "published": False,
         }
@@ -3346,7 +3719,25 @@ def self_check() -> dict:
             "thumbnail_present": True,
             "verified_thumbnail_path": "images/thumbnail.png",
             "inline_hashtags_present": True,
+            "rich_text": {
+                "headings_match": True,
+                "lists_match": True,
+                "quotes_match": True,
+                "code_blocks_match": True,
+                "anchor_links_match": True,
+                "no_exposed_raw_urls": True,
+            },
         }
+        legacy_receipt = json.loads(json.dumps(receipt))
+        legacy_receipt["schema_version"] = 2
+        legacy_receipt["verification"].pop("rich_text")
+        write_json(run_dir / "cms-receipt.json", legacy_receipt)
+        try:
+            checkpoint(workspace, "self-check", "verify", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("legacy verified receipt bypassed rich-text checks")
         write_json(run_dir / "cms-receipt.json", receipt)
         assert checkpoint(
             workspace, "self-check", "verify", "completed", None
@@ -3411,7 +3802,7 @@ def self_check() -> dict:
         write_json(
             paid_dir / "article-package.json",
             {
-                "schema_version": BRIEF_SCHEMA_VERSION,
+                "schema_version": ARTICLE_PACKAGE_SCHEMA_VERSION,
                 "run_id": "paid-check",
                 "title": "Paid self-check",
                 "body_path": "article.md",
