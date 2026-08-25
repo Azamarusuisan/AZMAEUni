@@ -13,7 +13,7 @@ Run the local and forward tests for every release. Run live tests only with expl
 7. Add one valid local PNG link and confirm `validate` records its relative path, MIME, byte count, and SHA-256 in `.state/asset-lock.json`.
 8. Separately confirm `validate` rejects a remote image, absolute path, `..`, missing file, workspace-escaping symlink, unsupported MIME, and file over 10 MB.
 9. Run `ready`, `new-run`, and `checkpoint`; confirm state is under `runs/<run-id>/`, the expected handle and immutable idempotency key are retained, the opaque draft reference is immutable, and any draft URL query or fragment is not stored.
-10. Confirm preflight rejects a stale article fingerprint, reordered or missing H2/H3 headings, a mismatched run ID or body path, duplicate or credential-bearing links, missing inline hashtags, and claim source IDs absent from `research.jsonl`.
+10. Confirm preflight rejects a stale article fingerprint, reordered or missing H2/H3 headings, a mismatched run ID or body path, duplicate or credential-bearing links, an embed without an exact fallback anchor or in the wrong anchor order, missing inline hashtags, and claim source IDs absent from `research.jsonl`.
 
 Pass when the repository remains unchanged except for the temporary workspace and every rejection exits nonzero without updating its previous asset lock.
 
@@ -82,9 +82,12 @@ Before the matrix, verify the browser-choice harness:
 | Complete draft | Required | Required | Creates one draft with title, formatted body, links, inline hashtags, images, ALT, and thumbnail |
 | Resume | Required | Required | Reopens the checkpointed draft URL and creates no duplicate |
 | Save reread | Required | Required | Observes saved state, rereads the same draft, and matches the expected fingerprint |
+| note article card | Required | Conditional | Replaces one planned standalone fallback anchor with one native card and verifies title, provider, canonical URL, and order after reread |
 | Unknown or ambiguous UI | Required | Required | Stops without guessing and reports exact manual recovery |
 
 For Chrome, use the current host's supported Chrome control and logged-in profile. For Safari, use the current host's supported semantic Computer Use surface. Run `doctor --agent codex|claude|hermes --browser chrome|safari --target note|brain` for the tested combination. For Brain, the browser is mandatory and `brain_semantic_observation` stays pending until the live editor controls are uniquely resolved. Record the agent/provider, target, capability availability, OS/browser versions, UI language, run ID, draft URL without query parameters, and result.
+
+The note article-card case is release-required for Chrome. Safari remains conditional and must use the fallback plus `save_unverified` until an attended Safari run observes a unique semantic card control and passes the same reread checks.
 
 ## Image and thumbnail case
 

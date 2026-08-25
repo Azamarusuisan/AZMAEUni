@@ -1997,6 +1997,7 @@ def markdown_headings(text: str) -> tuple[list[str], list[str]]:
 
 def markdown_rich_text(text: str) -> dict:
     anchors: list[dict[str, str]] = []
+    standalone_anchors: list[dict[str, str]] = []
     unordered_items = 0
     ordered_items = 0
     quote_blocks = 0
@@ -2024,7 +2025,9 @@ def markdown_rich_text(text: str) -> dict:
             raise ManageError(
                 f"article.md line {line_number} has an unmatched or multiline code span; use a fenced code block"
             )
-        for match in MARKDOWN_LINK_RE.finditer(without_code):
+        link_matches = list(MARKDOWN_LINK_RE.finditer(without_code))
+        line_anchors = []
+        for match in link_matches:
             label = markdown_visible_text(match.group("text")).strip()
             raw_url = match.group("url")
             if not raw_url.startswith("<") and "(" in raw_url:
@@ -2046,7 +2049,15 @@ def markdown_rich_text(text: str) -> dict:
                 raise ManageError(
                     f"article.md line {line_number} has URL text instead of a descriptive anchor"
                 )
-            anchors.append({"text": label, "url": url})
+            anchor = {"text": label, "url": url}
+            anchors.append(anchor)
+            line_anchors.append(anchor)
+        if (
+            len(link_matches) == 1
+            and without_code == line
+            and line == link_matches[0].group(0)
+        ):
+            standalone_anchors.extend(line_anchors)
         prose_source = MARKDOWN_LINK_RE.sub(
             lambda match: match.group("text"), without_code
         )
@@ -2163,6 +2174,7 @@ def markdown_rich_text(text: str) -> dict:
         raise ManageError("article.md has an unclosed code fence")
     return {
         "anchors": anchors,
+        "standalone_anchors": standalone_anchors,
         "unordered_list_items": unordered_items,
         "ordered_list_items": ordered_items,
         "quote_blocks": quote_blocks,
@@ -2213,6 +2225,49 @@ def validate_article_package(
         raise ManageError(
             "article package links do not match descriptive anchors in article.md"
         )
+
+    embeds = package.get("embeds", [])
+    if not isinstance(embeds, list):
+        raise ManageError("article package embeds must be a list")
+    standalone_pairs = [
+        (item["text"], item["url"])
+        for item in rich_text["standalone_anchors"]
+    ]
+    all_anchor_pairs = [
+        (item["text"], item["url"]) for item in rich_text["anchors"]
+    ]
+    previous_anchor_index = -1
+    embed_urls: set[str] = set()
+    for embed in embeds:
+        if not isinstance(embed, dict):
+            raise ManageError("article package embed must be an object")
+        raw_url = embed.get("url")
+        if not isinstance(raw_url, str) or not raw_url.strip():
+            raise ManageError("article package embed url is required")
+        url = validate_source_url(raw_url)
+        if raw_url != url:
+            raise ManageError("article package embed url must be canonical")
+        if url in embed_urls:
+            raise ManageError("article package embeds contain duplicate URLs")
+        embed_urls.add(url)
+        for field in ("provider", "title", "fallback_text"):
+            if (
+                not isinstance(embed.get(field), str)
+                or not embed[field].strip()
+                or embed[field] != embed[field].strip()
+            ):
+                raise ManageError(f"article package embed {field} is required")
+        if embed.get("required") is not True:
+            raise ManageError("article package embeds must be required")
+        pair = (embed["fallback_text"], url)
+        if standalone_pairs.count(pair) != 1 or all_anchor_pairs.count(pair) != 1:
+            raise ManageError(
+                "article package embed must match exactly one standalone fallback anchor in article.md"
+            )
+        anchor_index = standalone_pairs.index(pair)
+        if anchor_index <= previous_anchor_index:
+            raise ManageError("article package embeds must follow article anchor order")
+        previous_anchor_index = anchor_index
 
     hashtags = package.get("inline_hashtags")
     if not isinstance(hashtags, list) or any(
@@ -2493,6 +2548,12 @@ def validate_cms_receipt(run_dir: Path, state: dict, expected_status: str) -> No
     if any(not isinstance(path, str) or not path for path in expected_image_paths):
         raise ManageError("article package image paths are invalid")
     thumbnail = package.get("thumbnail")
+    required_embeds = package.get("embeds", [])
+    verified_embeds = verification.get("verified_embeds", [])
+    if not isinstance(verified_embeds, list):
+        raise ManageError("receipt verified_embeds must be a list")
+    if verified_embeds != required_embeds[: len(verified_embeds)]:
+        raise ManageError("receipt verified_embeds must match required embed order")
 
     if schema_version == RECEIPT_SCHEMA_VERSION:
         expected_count = verification.get("expected_body_image_count")
@@ -2559,7 +2620,30 @@ def validate_cms_receipt(run_dir: Path, state: dict, expected_status: str) -> No
                     "save_unverified receipt omits missing image paths: "
                     + ", ".join(absent)
                 )
+            missing_embed_tokens = [
+                f"embed:{embed['url']}"
+                for embed in required_embeds[len(verified_embeds) :]
+            ]
+            conflicting_embed_tokens = [
+                f"embed:{embed['url']}"
+                for embed in required_embeds[: len(verified_embeds)]
+                if f"embed:{embed['url']}" in missing
+            ]
+            if conflicting_embed_tokens:
+                raise ManageError(
+                    "save_unverified receipt lists verified embeds as missing: "
+                    + ", ".join(conflicting_embed_tokens)
+                )
+            absent_embeds = [item for item in missing_embed_tokens if item not in missing]
+            if absent_embeds:
+                raise ManageError(
+                    "save_unverified receipt omits missing embeds: "
+                    + ", ".join(absent_embeds)
+                )
         return
+
+    if verification.get("missing_required_items", []) != []:
+        raise ManageError("verified receipt cannot list missing_required_items")
 
     if schema_version == RECEIPT_SCHEMA_VERSION:
         rich_text = verification.get("rich_text")
@@ -2575,6 +2659,8 @@ def validate_cms_receipt(run_dir: Path, state: dict, expected_status: str) -> No
         ):
             if rich_text.get(field) is not True:
                 raise ManageError(f"verified receipt requires rich_text.{field}=true")
+        if verified_embeds != required_embeds:
+            raise ManageError("verified receipt is missing required embeds")
 
     for field in (
         "saved_state_seen",
@@ -2783,6 +2869,14 @@ def self_check() -> dict:
             },
             {"text": "Upper", "url": "https://example.com/upper"},
             {"text": "Escaped delimiter", "url": "https://example.com/escaped"},
+        ],
+        "standalone_anchors": [
+            {"text": "Official guide", "url": "https://example.com/docs"},
+            {
+                "text": "Wiki",
+                "url": "https://en.wikipedia.org/wiki/Function_(computer_programming)",
+            },
+            {"text": "Upper", "url": "https://example.com/upper"},
         ],
         "unordered_list_items": 3,
         "ordered_list_items": 2,
@@ -3459,7 +3553,12 @@ def self_check() -> dict:
             json.dumps(research_record, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
-        (run_dir / "article.md").write_text("# Self check\n", encoding="utf-8")
+        (run_dir / "article.md").write_text(
+            "# Self check\n\n"
+            "[Related article](https://example.com/source)\n\n"
+            "[Second article](https://example.com/other)\n",
+            encoding="utf-8",
+        )
         (run_dir / "image-plan.md").write_text(
             "# Image plan\n\n- body text: Inline text\n- thumbnail text: Self check\n",
             encoding="utf-8",
@@ -3476,7 +3575,26 @@ def self_check() -> dict:
                 "title": "Self check",
                 "body_path": "article.md",
                 "headings": [],
-                "links": [],
+                "links": [
+                    "https://example.com/source",
+                    "https://example.com/other",
+                ],
+                "embeds": [
+                    {
+                        "url": "https://example.com/source",
+                        "provider": "Example",
+                        "title": "Related article",
+                        "fallback_text": "Related article",
+                        "required": True,
+                    },
+                    {
+                        "url": "https://example.com/other",
+                        "provider": "Example",
+                        "title": "Second article",
+                        "fallback_text": "Second article",
+                        "required": True,
+                    },
+                ],
                 "inline_hashtags": [],
                 "claim_sources": {},
                 "content_fingerprint": sha256_file(run_dir / "article.md"),
@@ -3561,7 +3679,61 @@ def self_check() -> dict:
             pass
         else:
             raise AssertionError("article package link absent from article.md was accepted")
-        package["links"] = []
+        package["links"] = [
+            "https://example.com/source",
+            "https://example.com/other",
+        ]
+        valid_embeds = json.loads(json.dumps(package["embeds"]))
+        invalid_embeds = [
+            list(reversed(valid_embeds)),
+            [{**valid_embeds[0], "required": False}, valid_embeds[1]],
+            [
+                {**valid_embeds[0], "url": "HTTPS://example.com/source"},
+                valid_embeds[1],
+            ],
+            [{**valid_embeds[0], "provider": ""}, valid_embeds[1]],
+            [
+                {**valid_embeds[0], "fallback_text": "Missing fallback"},
+                valid_embeds[1],
+            ],
+        ]
+        for invalid in invalid_embeds:
+            package["embeds"] = invalid
+            write_json(run_dir / "article-package.json", package)
+            try:
+                checkpoint(workspace, "self-check", "preflight", "completed", None)
+            except ManageError:
+                pass
+            else:
+                raise AssertionError("invalid article package embed was accepted")
+        package["embeds"] = valid_embeds
+        article_path = run_dir / "article.md"
+        valid_article = article_path.read_text(encoding="utf-8")
+        for invalid_article in (
+            "# Self check\n\nSee [Related article](https://example.com/source).\n\n"
+            "[Second article](https://example.com/other)\n",
+            "# Self check\n\n`keep me` [Related article](https://example.com/source)\n\n"
+            "[Second article](https://example.com/other)\n",
+            "# Self check\n\n    [Related article](https://example.com/source)\n\n"
+            "[Second article](https://example.com/other)\n",
+            "# Self check\n\n[Related article](https://example.com/source)\n\n"
+            "See [Related article](https://example.com/source) again.\n\n"
+            "[Second article](https://example.com/other)\n",
+            "# Self check\n\n[Related article](https://example.com/source)\n\n"
+            "[Related article](https://example.com/source)\n\n"
+            "[Second article](https://example.com/other)\n",
+        ):
+            article_path.write_text(invalid_article, encoding="utf-8")
+            package["content_fingerprint"] = sha256_file(article_path)
+            write_json(run_dir / "article-package.json", package)
+            try:
+                checkpoint(workspace, "self-check", "preflight", "completed", None)
+            except ManageError:
+                pass
+            else:
+                raise AssertionError("ambiguous embed fallback anchor was accepted")
+        article_path.write_text(valid_article, encoding="utf-8")
+        package["content_fingerprint"] = sha256_file(article_path)
         write_json(run_dir / "article-package.json", package)
         package = read_json(run_dir / "article-package.json")
         del package["images"][0]["placement"]
@@ -3664,6 +3836,7 @@ def self_check() -> dict:
                 "verified_image_paths": [],
                 "thumbnail_present": False,
                 "verified_thumbnail_path": None,
+                "verified_embeds": package["embeds"],
                 "inline_hashtags_present": True,
                 "rich_text": {
                     "headings_match": True,
@@ -3702,6 +3875,27 @@ def self_check() -> dict:
             "images/body.png",
             "images/thumbnail.png",
         ]
+        receipt["verification"]["verified_embeds"] = [package["embeds"][0]]
+        write_json(run_dir / "cms-receipt.json", receipt)
+        try:
+            checkpoint(workspace, "self-check", "verify", "save_unverified", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("save_unverified receipt omitted a missing embed")
+        receipt["verification"]["missing_required_items"].append(
+            "embed:https://example.com/source"
+        )
+        write_json(run_dir / "cms-receipt.json", receipt)
+        try:
+            checkpoint(workspace, "self-check", "verify", "save_unverified", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("save_unverified receipt marked a verified embed missing")
+        receipt["verification"]["missing_required_items"][-1] = (
+            "embed:https://example.com/other"
+        )
         write_json(run_dir / "cms-receipt.json", receipt)
         assert checkpoint(
             workspace, "self-check", "verify", "save_unverified", None
@@ -3718,6 +3912,7 @@ def self_check() -> dict:
             "verified_image_paths": ["images/body.png"],
             "thumbnail_present": True,
             "verified_thumbnail_path": "images/thumbnail.png",
+            "verified_embeds": package["embeds"],
             "inline_hashtags_present": True,
             "rich_text": {
                 "headings_match": True,
@@ -3739,9 +3934,43 @@ def self_check() -> dict:
         else:
             raise AssertionError("legacy verified receipt bypassed rich-text checks")
         write_json(run_dir / "cms-receipt.json", receipt)
+        receipt["verification"]["verified_embeds"] = list(
+            reversed(package["embeds"])
+        )
+        write_json(run_dir / "cms-receipt.json", receipt)
+        try:
+            checkpoint(workspace, "self-check", "verify", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("verified receipt with a missing embed was accepted")
+        receipt["verification"]["verified_embeds"] = package["embeds"]
+        receipt["verification"]["missing_required_items"] = [
+            "embed:https://example.com/source"
+        ]
+        write_json(run_dir / "cms-receipt.json", receipt)
+        try:
+            checkpoint(workspace, "self-check", "verify", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("verified receipt retained missing items")
+        receipt["verification"].pop("missing_required_items")
+        write_json(run_dir / "cms-receipt.json", receipt)
         assert checkpoint(
             workspace, "self-check", "verify", "completed", None
         )["status"] == "completed"
+        package["embeds"] = []
+        receipt["verification"].pop("verified_embeds")
+        write_json(run_dir / "article-package.json", package)
+        write_json(run_dir / "cms-receipt.json", receipt)
+        assert checkpoint(
+            workspace, "self-check", "verify", "completed", None
+        )["status"] == "completed"
+        package["embeds"] = valid_embeds
+        receipt["verification"]["verified_embeds"] = valid_embeds
+        write_json(run_dir / "article-package.json", package)
+        write_json(run_dir / "cms-receipt.json", receipt)
 
         # Paid articles can be fully written and preflighted, but commercial
         # staging stays blocked until the current attended run confirms both

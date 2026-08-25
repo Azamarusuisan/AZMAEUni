@@ -159,7 +159,9 @@ Article Packageの `inline_hashtags` を本文末尾の専用blockとして入�
 
 Article Packageまたはrich-media planにrequiredなembedがある場合だけ、現在のsemanticな「埋め込み」controlを使う。検証済みcanonical HTTPS URLを一件ずつ入力し、provider、title、preview、前後blockの順序を観察してから次へ進む。検索結果redirect、広告URL、短縮URLへ置換しない。
 
-previewが失敗した場合は同じcanonical URLのcaptionと通常linkを残し、required embedを完了扱いにしない。別動画を推測で選ばず、receiptへ不足embedを記録して`save_unverified`とする。
+前回記事・関連記事として独立blockに置くnote記事URLは、`article-package.json embeds` にある場合、対応するMarkdown fallback anchorの位置でnote標準の記事カードへ置き換える。成功時に通常linkを重複表示しない。本文中の引用linkまで一律にカード化しない。
+
+previewが失敗した場合は同じcanonical URLのcaptionと通常linkを残し、required embedを完了扱いにしない。その時点で後続embedの挿入も止め、未完了suffixをreceiptへ `embed:<canonical-url>` として記録して`save_unverified`とする。別動画を推測で選ばない。
 
 ## 下書き保存と再読検証
 
@@ -183,6 +185,7 @@ previewが失敗した場合は同じcanonical URLのcaptionと通常linkを残�
 - 必須inline imageの数と順序
 - thumbnailの存在
 - required embedのURL、provider/title、数、順序
+- `verified_embeds` がArticle Package内のrequired embedと完全一致
 - 同じDraftRefであること
 
 保存表示だけ、URL取得だけ、本文の一部一致だけでは成功にしない。両条件を満たした場合だけ `verification.status: verified`、`published: false` のreceiptを保存する。判断不能なら `save_unverified` とする。
@@ -198,7 +201,7 @@ schema 3 receiptでは `article-package.json` と次を一致させる。
 - `rich_text.lists_match`: list種類、全item、順序が一致
 - `rich_text.quotes_match`: quote全文、順序が一致
 - `rich_text.code_blocks_match`: code block全文、順序が一致し、本文への漏れがない
-- `rich_text.anchor_links_match`: 表示名とHTTPS遷移先が一致
+- `rich_text.anchor_links_match`: 成功したembed fallbackを除く通常linkの表示名とHTTPS遷移先が一致
 - `rich_text.no_exposed_raw_urls`: code block外の生URLが0件
 
 一つでも不足、順序不一致、観察不能なら `verified` にしない。本文だけ一致した状態を記事全体の完了として報告しない。

@@ -40,7 +40,9 @@ For every required embed, record:
 - article placement and the question it answers;
 - a one-sentence caption explaining why it is included;
 - a normal link fallback using the same canonical URL;
-- `required: true|false`.
+- `required: true`.
+
+Optional media stays a descriptive fallback link and is not added to `article-package.json embeds` until it becomes required.
 
 In the note editor:
 
@@ -52,6 +54,14 @@ In the note editor:
 6. verify provider/title and surrounding block order before inserting the next item.
 
 Do not autoplay, log into the provider, accept marketing consent, or interact with account controls. A preview failure does not authorize a different URL. Keep the caption and fallback link, mark a required embed missing, and report `save_unverified` when the user explicitly required the embed.
+
+### note article cards
+
+Use a native article card for a planned previous/related note article that occupies its own block; keep inline citations as normal anchors. Record only required cards in `article-package.json embeds` with canonical `url`, observed `provider`, exact `title`, exact `fallback_text`, and `required: true`. The URL and fallback text must match exactly one unindented top-level standalone descriptive Markdown anchor, and card order must follow anchor order. The Markdown anchor is the portable fallback; in note, replace that one block with the card rather than displaying both.
+
+Use only the currently observed semantic `埋め込み` or equivalent control. After preview and again after reopening the draft, confirm one card, its exact title/provider, canonical destination, and surrounding block order. At the first failure, stop before all later embeds so the verified list remains an ordered prefix. Leave or restore the descriptive fallback anchor, record that URL and every unattempted suffix as `embed:<canonical-url>` missing, and use `save_unverified`.
+
+For reread comparison, normal anchors are the source anchors excluding successful card fallbacks. Exclude the matched fallback block and card block from both sides of the normalized text fingerprint; never weaken comparison for the rest of the article.
 
 ## Rich-editor QA
 

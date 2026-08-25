@@ -306,6 +306,15 @@ The package contains no browser selector or CMS-specific HTML:
   "body_path": "article.md",
   "headings": [],
   "links": [],
+  "embeds": [
+    {
+      "url": "https://note.com/example/n/example",
+      "provider": "note",
+      "title": "Previous article title",
+      "fallback_text": "Previous article: Previous article title",
+      "required": true
+    }
+  ],
   "inline_hashtags": [],
   "access": {
     "model": "paid",
@@ -341,7 +350,7 @@ The package contains no browser selector or CMS-specific HTML:
 
 An image entry contains a run-relative path, MIME, SHA-256, kind, actual pixel dimensions, placement, alt text, and any supported claim IDs. Allowed kinds are `article`, `diagram`, `comparison`, `flow`, and `thumbnail`. When a rendered image contains text, include the exact `text` and set `text_verified` only after visually checking the final file character-for-character. When it contains the registered partner, include the approved source paths/hashes and set `identity_checked` only after comparing the final output with every invariant trait. Body-image count must exactly match `brief.json images.count`; a thumbnail is counted separately. note thumbnails must be exactly `1280x670`.
 
-For schema 4 packages, preflight recalculates `content_fingerprint` from `article.md`; compares the package run ID, body path, optional H1, and ordered H2/H3 headings; requires `links` to exactly match the ordered unique destinations of descriptive Markdown anchors; rejects exposed raw URLs, non-HTTPS or URL-only anchors, pseudo-lists, high-confidence collapsed list items, and code-like paragraphs outside fences; validates inline hashtags; and rejects any `claim_sources` ID absent from `research.jsonl`. Legacy schema 3 packages must be regenerated before preflight. Editing the article after packaging therefore requires regenerating the affected package fields and rerunning preflight.
+For schema 4 packages, preflight recalculates `content_fingerprint` from `article.md`; compares the package run ID, body path, optional H1, and ordered H2/H3 headings; requires `links` to exactly match the ordered unique destinations of descriptive Markdown anchors; validates optional `embeds` as an ordered subset of exact, unique, unindented top-level standalone fallback anchor text/URL pairs with canonical URLs, trimmed provider/title, and `required: true`; rejects exposed raw URLs, non-HTTPS or URL-only anchors, pseudo-lists, high-confidence collapsed list items, and code-like paragraphs outside fences; validates inline hashtags; and rejects any `claim_sources` ID absent from `research.jsonl`. Legacy schema 3 packages must be regenerated before preflight. Editing the article after packaging therefore requires regenerating the affected package fields and rerunning preflight.
 
 The package `access.model` must equal the Brief. For paid articles, `paywall_after` and the price proposal must match the Brief, the exact heading must exist in `article.md`, and `paid-plan.md` must contain the same heading and amount. This proves that the paid article is structurally complete; it does not mean the CMS sale is active.
 
@@ -368,6 +377,15 @@ A successful schema 3 receipt is:
     "verified_image_paths": ["images/diagram-1.png", "images/diagram-2.png"],
     "thumbnail_present": true,
     "verified_thumbnail_path": "images/thumbnail.png",
+    "verified_embeds": [
+      {
+        "url": "https://note.com/example/n/example",
+        "provider": "note",
+        "title": "Previous article title",
+        "fallback_text": "Previous article: Previous article title",
+        "required": true
+      }
+    ],
     "inline_hashtags_present": true,
     "rich_text": {
       "headings_match": true,
@@ -384,9 +402,11 @@ A successful schema 3 receipt is:
 
 If the safe reread cannot confirm the content, use `save_unverified`; never call it success.
 
-New runs write receipt schema 3. `checkpoint --phase verify --status completed` validates the receipt against `article-package.json` and rejects missing or reordered body images, a missing thumbnail, a mismatched draft URL, non-false `published`, any false core verification flag, or missing/false `rich_text` verification. Legacy schema 1/2 receipts remain readable only for `save_unverified`; verified completion requires rereading the draft and migrating to schema 3.
+New runs write receipt schema 3. `checkpoint --phase verify --status completed` validates the receipt against `article-package.json` and rejects missing or reordered body images or required embeds, a missing thumbnail, a mismatched draft URL, non-false `published`, any false core verification flag, or missing/false `rich_text` verification. Legacy schema 1/2 receipts remain readable only for `save_unverified`; verified completion requires rereading the draft and migrating to schema 3.
 
-A partial schema 3 draft keeps the same count, path, and thumbnail fields, sets `verification.status: save_unverified`, and adds a non-empty `missing_required_items` list containing every unobserved required image path. This permits the same draft to be resumed without pretending the article is complete.
+When a fallback anchor becomes a card, `rich_text.anchor_links_match` compares only the remaining normal anchors. Content fingerprint verification excludes that matched fallback/card block on both sides and still compares the rest of the normalized article exactly.
+
+A partial schema 3 draft keeps the same count, path, thumbnail, and verified-embed fields, sets `verification.status: save_unverified`, and adds a non-empty `missing_required_items` list containing every unobserved required image path and `embed:<canonical-url>`. `verified_embeds` must be the exact completed prefix; the first card failure stops later insertions, and every suffix URL is missing. This permits the same draft to be resumed without duplication or pretending the article is complete.
 
 ## Failure contract
 

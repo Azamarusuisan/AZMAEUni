@@ -27,7 +27,7 @@ Use this once after the article and images are complete and before CMS staging. 
 ## CMS readiness
 
 - Code fences are closed and preserve internal blank lines.
-- Links are canonical, unique in the package, and represented by descriptive Markdown anchors whose ordered unique targets exactly match `article-package.json links`; exposed raw URLs are allowed only inside fenced code.
+- Links are canonical, unique in the package, and represented by descriptive Markdown anchors whose ordered unique targets exactly match `article-package.json links`; each required card in `embeds` matches exactly one standalone fallback anchor and follows anchor order; exposed raw URLs are allowed only inside fenced code.
 - Lists use Markdown list syntax, quotes use block quotes, and commands, JSON, configuration, and logs use fenced code. Reject pseudo-list characters and multiple collapsed items on one line.
 - Each body image appears once at its planned position. Its caption states what the reader should notice and does not duplicate a nearby paragraph.
 - Figure numbering, captions, hashtags, and CTA are consistent and not duplicated.
