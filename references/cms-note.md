@@ -53,10 +53,12 @@ set_link
 set_inline_hashtags
 upload_inline_image
 upload_thumbnail
+insert_embed
 save_draft
 observe_saved_state
 reread_same_draft
 verify_draft
+verify_embed
 ```
 
 次の操作はallowlistへ追加しない。
@@ -129,6 +131,13 @@ heading blockごとにlevelと本文を適用する。現在のeditorが提供�
 
 `http` または `https` の検証済みURLだけを使用する。対象テキストとlink controlを一意に確認し、適用後にanchor textと遷移先を再読する。リンク先を開く必要がある場合も、現在の下書きを失わない読取り方法だけを使う。
 
+### Code blocks
+
+- Article Packageの各code fenceを、一つのsemantic code blockとして適用する。空行を境に通常段落や番号付きリストへ分割させない。
+- editorが空行でcode blockを終了する場合は、その空行だけASCII space一文字にする。比較時は各行の末尾ASCII spaceとtabを除いてsource fenceと一致させる。zero-width文字、全角空白、見えない制御文字はcopy時の事故になるため使わない。
+- 保存前と再読後に、code block数だけでなく全文、順序、先頭行を照合する。source fenceの先頭行または続きが通常の`p`、`li`へ漏れていないことも確認する。
+- 一件でも分割、欠落、順序不一致、通常本文への漏れがあれば`verified`にしない。
+
 ### Images
 
 - 当該runのmanifestにある検証済みファイルだけをuploadする。
@@ -146,6 +155,12 @@ thumbnail指定がある場合だけ一件uploadする。inline imageをthumbnai
 
 Article Packageの `inline_hashtags` を本文末尾の専用blockとして入力する。各値は先頭 `#` を一つだけ持つ検証済みテキストとし、重複を除く。公開設定画面のtag UIへ移動しない。
 
+### Rich media embeds
+
+Article Packageまたはrich-media planにrequiredなembedがある場合だけ、現在のsemanticな「埋め込み」controlを使う。検証済みcanonical HTTPS URLを一件ずつ入力し、provider、title、preview、前後blockの順序を観察してから次へ進む。検索結果redirect、広告URL、短縮URLへ置換しない。
+
+previewが失敗した場合は同じcanonical URLのcaptionと通常linkを残し、required embedを完了扱いにしない。別動画を推測で選ばず、receiptへ不足embedを記録して`save_unverified`とする。
+
 ## 下書き保存と再読検証
 
 記事適用後、意味が一意な下書き保存controlまたはbrowser documentationで保証されたautosave状態だけを使用する。「公開」「投稿」「次へ」「Publish」と区別できないcontrolは操作しない。
@@ -159,10 +174,12 @@ Article Packageの `inline_hashtags` を本文末尾の専用blockとして入�
 
 - titleの完全一致
 - 正規化した本文block、heading level、順序のfingerprint一致
+- code fenceごとの正規化全文と順序の一致、および通常本文へのcode漏れが0件
 - anchor textとURL
 - inline hashtags
 - 必須inline imageの数と順序
 - thumbnailの存在
+- required embedのURL、provider/title、数、順序
 - 同じDraftRefであること
 
 保存表示だけ、URL取得だけ、本文の一部一致だけでは成功にしない。両条件を満たした場合だけ `verification.status: verified`、`published: false` のreceiptを保存する。判断不能なら `save_unverified` とする。

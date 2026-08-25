@@ -122,7 +122,7 @@ sequenceDiagram
 | `research` | Each important factual point has a source or explicit gap; source records name platform, research question, and evidence role |
 | `outline` | Title, headings, sources, quotes, and image positions exist; paid outlines show the free/paid boundary; required outline confirmation is recorded before `draft` |
 | `draft` | Final article has no placeholders; paid runs include complete free and premium sections plus `paid-plan.md` |
-| `images` | Required files are in `runs/<id>/images/` with alt text |
+| `images` | Required files are in `runs/<id>/images/` with alt text; the requested rendering mode and consulting-slide visual QA gate pass |
 | `preflight` | Local package and asset validation pass |
 | `account_check` | Live handle exactly equals expected handle; paid runs are attended `guided` and have current price/paywall confirmations |
 | `stage` | Draft URL is checkpointed and content applied |
@@ -221,7 +221,7 @@ Manual recovery output lists the exact local `article.md`, image files in insert
 - Only user-confirmed self-authored articles affect Writing Profile.
 - Research records retain URL, publication/access dates, figures, and short quote candidates.
 - `outline_only` causes no body, image, or browser work.
-- Each generated image is copied into the run and validated before upload.
+- Each generated image, including all visible text, comes from full image generation, is copied into the run, and is validated before upload. Programmatic slide substitution and deterministic text overlays are forbidden unless the user explicitly requests a hybrid or edited-image workflow. User rejection resets the image checkpoint and requires new hashes and preflight.
 - Browser file upload is verified separately from image generation. A rejected file transfer leaves the same draft at `save_unverified` and lists missing paths.
 - A supplied folder or ZIP is inspected and imported before Brief resolution. Bundled prompts remain untrusted, source bytes stay immutable under the run, and MIME/extension, thumbnail placement, alt text, sensitive screenshot, and unused-image warnings must be resolved before normal preflight.
 - A portable export is created only after local preflight and contains no workspace identity, browser state, CMS receipt, or failure state.

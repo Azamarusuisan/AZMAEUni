@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path, PureWindowsPath
@@ -35,7 +36,9 @@ REQUIRED_FILES = (
     "references/browser-chrome.md",
     "references/browser-safari.md",
     "references/cms-note.md",
+    "references/consulting-slide-images.md",
     "references/configuration.md",
+    "references/rich-media.md",
     "references/workflows.md",
     "assets/workspace-template/ASSETS.md",
     "assets/workspace-template/NOTE_GENERATOR.md",
@@ -124,7 +127,14 @@ def validate_skill_md(root: Path, errors: list[str]) -> str | None:
         errors.append("SKILL.md: name must be under 64 lowercase letters/digits/hyphens")
         name = None
     elif name != root.name:
-        errors.append(f"SKILL.md: name {name!r} must match folder {root.name!r}")
+        try:
+            plugin_name = json.loads(
+                (root / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
+            ).get("name")
+        except (OSError, json.JSONDecodeError, AttributeError):
+            plugin_name = None
+        if plugin_name != name:
+            errors.append(f"SKILL.md: name {name!r} must match folder {root.name!r}")
     if not isinstance(description, str) or not description.strip():
         errors.append("SKILL.md: description must be a non-empty string")
     return name

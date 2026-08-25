@@ -152,7 +152,7 @@ The workspace default may be `ask_each_time`, but the per-run Brief must resolve
 6. Identify conflicts and unknown dates. Exclude inaccessible or out-of-range sources from factual support.
 7. Create `outline.md` before the body: title, optional subtitle, headings, image positions, quotation positions, and supporting source IDs. For paid articles, show the free/premium boundary and ensure the free section contains enough information to make an informed purchase decision.
 8. In `outline_only`, present it and stop. In `guided`, apply the configured outline confirmation gate. In `autopilot`, continue without an outline confirmation pause.
-9. Write `article.md` from the resolved Brief, research, outline, template, and Writing Profile. Optimize for clarity, completion rate, SEO/AIO usefulness, and shareability without keyword stuffing.
+9. Write `article.md` from the resolved Brief, research, outline, template, and Writing Profile. Optimize for clarity, completion rate, SEO/AIO usefulness, and shareability without keyword stuffing. When the user requests rich content, videos, or strong links, read [references/rich-media.md](references/rich-media.md), plan those blocks before preflight, and keep every external URL attributable and independently verified.
 10. For paid articles, write both sections completely and create `paid-plan.md` with the purchase promise, exact paywall heading, price proposal and rationale, delivered assets, and confirmation state. The paid section must add executable value such as procedures, decision criteria, examples, templates, checklists, or recovery paths instead of restating the free section.
 11. Preserve source links and short quotation attribution. Do not imitate a third party's distinctive style.
 
@@ -160,19 +160,21 @@ Checkpoint each completed phase.
 
 ## Generate images
 
-Use the current host's verified image capability for every generated raster asset. In Codex, read and follow the installed `imagegen` Skill. In Claude Code, follow the connected image-generation Skill/MCP instructions. In Hermes Agent, use `image_generate` and its current tool documentation. When `ASSETS.md` registers a visual partner, also read and follow [references/visual-identity.md](references/visual-identity.md).
+Use the current host's verified image capability for every generated raster asset. In Codex, read and follow the installed `imagegen` Skill. In Claude Code, follow the connected image-generation Skill/MCP instructions. In Hermes Agent, use `image_generate` and its current tool documentation. Read [references/consulting-slide-images.md](references/consulting-slide-images.md) whenever an image is a diagram, process, comparison, data/case-study visual, or the user asks for a consulting-slide or presentation-like finish. When `ASSETS.md` registers a visual partner, also read and follow [references/visual-identity.md](references/visual-identity.md).
 
-1. Write `image-plan.md` with kind, purpose, placement, aspect ratio, prompt, text constraints, and alt text.
-2. Support thumbnail, article image, diagram, comparison, and flow image.
-3. For every text-bearing thumbnail or body image, save the exact copy verbatim in `image-plan.md` and the Article Package. Verify every character in the rendered file before upload. Regenerate or deterministically rerender wrong, clipped, or unreadable text.
-4. Make one image-generation call per distinct asset.
-5. Use validated local files from `ASSETS.md` as references only when needed. For every planned visual-partner placement, use the approved reference files and preserve the registered invariant traits; never improvise a replacement character.
-6. Copy each generated output into the current run's `images/` directory.
-7. Normalize the note thumbnail to exactly `1280x670` before upload and record the final pixel dimensions in `image-plan.md`. For Brain, observe the platform's current recommended ratio instead of reusing note's value.
-8. Record `kind`, final `width` and `height`, placement, alt text, SHA-256, and exact image copy when present. Validate all of them against the final file before upload. Do not reference temporary generator output paths.
-9. Inspect the produced file itself, not only the generator response. Reject and regenerate when any of these fail: wrong dimensions, misspelled title text, clipped subject or text, unreadable contrast at feed size, private data, foreign branding, watermark, or an unintended face.
+1. Set `rendering_mode` to `full_image_generation` for every generated asset. The image tool must create the complete visible composition, including all text. Do not substitute or patch it with HTML, SVG, PPT, canvas, plotting code, or deterministic text overlays. Allow post-processing only for resizing, cropping, format conversion, and color-profile normalization unless the user explicitly requests a hybrid or edited-image workflow.
+2. Write `image-plan.md` with kind, purpose, placement, aspect ratio, rendering mode, visual thesis, hierarchy, prompt, exact text, prohibited motifs, and alt text.
+3. Support thumbnail, article image, diagram, comparison, and flow image. Give each body image one decision-useful takeaway; do not create a decorative restatement of the heading.
+4. For every text-bearing thumbnail or body image, save the exact copy verbatim in `image-plan.md` and the Article Package. Verify every character and number in the rendered file before upload. Regenerate the complete image when any text is wrong, clipped, substituted, duplicated, or unreadable; never repair it with an overlay.
+5. Make one image-generation call per distinct asset. Do not treat a programmatically assembled slide as an image-generation call.
+6. Use validated local files from `ASSETS.md` as references only when needed. For every planned visual-partner placement, use the approved reference files and preserve the registered invariant traits; never improvise a replacement character.
+7. Copy each generated output into the current run's `images/` directory.
+8. Normalize the note thumbnail to exactly `1280x670` before upload and record the final pixel dimensions in `image-plan.md`. For Brain, observe the platform's current recommended ratio instead of reusing note's value.
+9. Record `kind`, final `width` and `height`, placement, alt text, SHA-256, exact image copy, and visual-quality result. Validate all of them against the final file before upload. Do not reference temporary generator output paths.
+10. Inspect the produced file itself at full size and feed-size preview, not only the generator response. Reject and regenerate when any of these fail: wrong dimensions, misspelled title or KPI, clipped content, weak information hierarchy, unreadable contrast, generic template appearance, unsupported claim, missing caveat, private data, foreign branding, watermark, or unintended face.
+11. If the user rejects an image, stop CMS staging for affected assets. Treat the rejection as a failed image checkpoint, regenerate every rejected or style-inconsistent referenced asset, update hashes and the Article Package, and rerun preflight before upload.
 
-Prefer generating the background or main visual without long text, then rendering accurate title copy deterministically. Text-bearing body diagrams follow the same verification rule as thumbnails. Do not bundle a personal brand into a reusable template; build templates only from the current user's approved assets in `ASSETS.md`.
+Generated thumbnails and body images always use full image generation, including their visible text. Deterministic text overlays are not a fallback. If exact copy still fails after reasonable regeneration, report the limitation before CMS mutation. Text-bearing body diagrams follow the same verification rule as thumbnails. Do not bundle a personal brand into a reusable template; build templates only from the current user's approved assets in `ASSETS.md`.
 
 If image generation is unavailable, stop before CMS mutation and leave the complete text plus image plan.
 
@@ -184,6 +186,7 @@ Before opening the note editor, ensure:
 - title and article contain no placeholders;
 - factual claims have source IDs and URLs;
 - requested links, images, alt text, thumbnail, and inline hashtags are present;
+- every required rich-media block has an HTTPS source, provider/title metadata, a specific placement, and a verified fallback link;
 - every planned visual-partner image records the approved source paths/hashes and `identity_checked: true`, and `image-plan.md` contains the full registered identity constraints;
 - imported source-package warnings are resolved, every accepted image has been copied into `run/images/` with an extension matching its actual MIME, and thumbnail candidates are not duplicated in the body without an explicit request;
 - every upload path is inside the current run;
@@ -207,9 +210,9 @@ Use the provider selected during onboarding. Do not silently fall back to the ot
 2. Run `verify-account --observed-handle <canonical-live-handle>` to compare it exactly with `.state/workspace.json.expected_account_handle`.
 3. If unequal, stop and ask the user to switch/login manually in the selected browser. Recheck; never switch automatically.
 4. Resume the checkpointed draft reference or URL when present. Otherwise create one new article and immediately checkpoint both available identifiers; keep the `new-run` idempotency key unchanged.
-5. Apply title, body, headings, lists, quotations, and links. Upload each required body image one at a time and observe that it appears at the planned position before sending the next file. Upload the thumbnail separately and observe its preview. Then apply inline hashtags.
+5. Apply title, body, headings, lists, quotations, code blocks, and links with the editor's current semantic controls. Keep every source code fence inside one semantic code block even when it contains blank lines; if the editor exits code formatting on an empty line, use an ASCII-space-only line and compare after right-trimming each line. Never use zero-width or full-width invisible separators. Insert each planned rich-media embed through the current `埋め込み` or equivalent semantic control, wait for its preview, and verify provider, title, URL, and placement. Upload each required body image one at a time and observe that it appears at the planned position before sending the next file. Upload the thumbnail separately and observe its preview. Then apply inline hashtags.
 6. Save as draft. Never select a public/scheduled state.
-7. Observe the saved indicator, reopen or safely reread the same draft, and compare title, headings, links, images, thumbnail, hashtags, and a content fingerprint.
+7. Observe the saved indicator, reopen or safely reread the same draft, and compare title, headings, lists, code blocks, anchor URLs, required embeds, images, thumbnail, hashtags, and a content fingerprint. For code, compare the normalized full contents and order of every fence, not only the block count, and confirm that no code-fence text leaked into ordinary paragraphs or lists.
 8. Write schema 2 `cms-receipt.json`, including expected and observed body-image counts, the ordered run-relative paths actually verified in the editor, and the verified thumbnail path. Use `verified` only when every required item matches; otherwise list the missing items and use `save_unverified`.
 
 If browser file transfer is rejected after text has been applied, stop further uploads, keep the same checkpointed draft, write `browser_file_transfer_rejected` to the failure report, and checkpoint `stage`/`verify` as `save_unverified`. The first sentence to the user must say that the draft is incomplete and state how many images are missing. Do not headline the report with 「下書きを保存しました」, 「完了」, or 「確認済み」.
@@ -242,6 +245,8 @@ Do not claim unsupported browser control. If Safari Computer Use or the Chrome c
 - [references/research-platforms.md](references/research-platforms.md): question-based routing across official, academic, corporate, technical, news, and community sources.
 - [references/scheduling.md](references/scheduling.md): recurring unattended runs and their limits.
 - [references/source-packages.md](references/source-packages.md): safe folder/ZIP inspection, import, normalization, and portable export.
+- [references/consulting-slide-images.md](references/consulting-slide-images.md): image-generated executive slides, information architecture, prompts, and visual QA.
+- [references/rich-media.md](references/rich-media.md): note rich-editor structure, verified links, video embeds, and fallback behavior.
 - [references/visual-identity.md](references/visual-identity.md): optional per-user mascot onboarding, reference locking, appearance policy, and identity QA.
 - [references/agent-compatibility.md](references/agent-compatibility.md): Codex, Claude Code, and Hermes installation and capability mapping.
 - [references/windows.md](references/windows.md): native Windows, WSL2, PowerShell, CI, and error recovery.
