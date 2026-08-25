@@ -1868,7 +1868,7 @@ def require_paid_commercial_confirmation(brief: dict, state: dict) -> None:
             raise ManageError(f"paid CMS staging rejects future {label} confirmation")
 
 
-def validate_research_records(run_dir: Path, brief: dict) -> None:
+def validate_research_records(run_dir: Path, brief: dict) -> set[str]:
     path = run_dir / "research.jsonl"
     if not path.is_file():
         raise ManageError("missing research.jsonl")
@@ -1925,6 +1925,111 @@ def validate_research_records(run_dir: Path, brief: dict) -> None:
     }
     if strict and record_count == 0 and not explicit_opt_out:
         raise ManageError("research.jsonl has no source records")
+    return seen_ids
+
+
+def markdown_headings(text: str) -> tuple[list[str], list[str]]:
+    h1: list[str] = []
+    body: list[str] = []
+    fence: tuple[str, int] | None = None
+    for line in text.splitlines():
+        marker = re.match(r"^[ \t]*(`{3,}|~{3,})(.*)$", line)
+        if fence is not None:
+            if (
+                marker
+                and marker.group(1)[0] == fence[0]
+                and len(marker.group(1)) >= fence[1]
+                and not marker.group(2).strip()
+            ):
+                fence = None
+            continue
+        if marker:
+            fence = (marker.group(1)[0], len(marker.group(1)))
+            continue
+        heading = re.match(
+            r"^(#{1,3})[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$", line
+        )
+        if not heading:
+            continue
+        title = heading.group(2).strip()
+        if len(heading.group(1)) == 1:
+            h1.append(title)
+        else:
+            body.append(title)
+    if fence is not None:
+        raise ManageError("article.md has an unclosed code fence")
+    return h1, body
+
+
+def validate_article_package(
+    run_dir: Path, state: dict, brief: dict, package: dict, source_ids: set[str]
+) -> None:
+    if brief.get("schema_version") in {1, 2}:
+        return
+    if package.get("schema_version") != BRIEF_SCHEMA_VERSION:
+        raise ManageError("article-package.json has an unsupported schema_version")
+    if package.get("run_id") != state.get("run_id"):
+        raise ManageError("article package run_id does not match state.json")
+    if package.get("body_path") != "article.md":
+        raise ManageError("article package body_path must be article.md")
+
+    title = package.get("title")
+    if not isinstance(title, str) or not title.strip():
+        raise ManageError("article package title is required")
+    article_path = run_dir / "article.md"
+    article_text = article_path.read_text(encoding="utf-8")
+    h1, headings = markdown_headings(article_text)
+    if len(h1) > 1 or (h1 and h1[0] != title):
+        raise ManageError("article.md H1 does not match the package title")
+    if package.get("headings") != headings:
+        raise ManageError("article package headings do not match article.md")
+
+    fingerprint = package.get("content_fingerprint")
+    if fingerprint != sha256_file(article_path):
+        raise ManageError("article package content_fingerprint does not match article.md")
+
+    links = package.get("links")
+    if not isinstance(links, list) or any(not isinstance(url, str) for url in links):
+        raise ManageError("article package links must be a list of HTTPS URLs")
+    if len(set(links)) != len(links):
+        raise ManageError("article package links contain duplicates")
+    for url in links:
+        validate_source_url(url)
+
+    hashtags = package.get("inline_hashtags")
+    if not isinstance(hashtags, list) or any(
+        not isinstance(tag, str) or not re.fullmatch(r"#[^#\s]+", tag)
+        for tag in hashtags
+    ):
+        raise ManageError("article package inline_hashtags are invalid")
+    if len(set(hashtags)) != len(hashtags):
+        raise ManageError("article package inline_hashtags contain duplicates")
+    missing_hashtags = [tag for tag in hashtags if tag not in article_text]
+    if missing_hashtags:
+        raise ManageError(
+            "article.md is missing inline hashtags: " + ", ".join(missing_hashtags)
+        )
+
+    claim_sources = package.get("claim_sources")
+    if not isinstance(claim_sources, dict):
+        raise ManageError("article package claim_sources must be an object")
+    for claim_id, references in claim_sources.items():
+        if not isinstance(claim_id, str) or not SAFE_ID_RE.fullmatch(claim_id):
+            raise ManageError("article package has an invalid claim ID")
+        if (
+            not isinstance(references, list)
+            or not references
+            or any(not isinstance(source_id, str) for source_id in references)
+        ):
+            raise ManageError(f"article package claim {claim_id} has invalid sources")
+        missing_sources = [
+            source_id for source_id in references if source_id not in source_ids
+        ]
+        if missing_sources:
+            raise ManageError(
+                f"article package claim {claim_id} references unknown sources: "
+                + ", ".join(missing_sources)
+            )
 
 
 def require_resolved_brief(workspace: Path, run_dir: Path) -> dict:
@@ -2051,12 +2156,13 @@ def validate_preflight(run_dir: Path, state: dict, require_checkpoint: bool) -> 
     if not (run_dir / "article.md").is_file():
         raise ManageError("missing article.md")
     brief = read_json(run_dir / "brief.json")
-    validate_research_records(run_dir, brief)
+    source_ids = validate_research_records(run_dir, brief)
     package = read_json(run_dir / "article-package.json")
     preflight = package.get("preflight")
     status = preflight.get("status") if isinstance(preflight, dict) else preflight
     if status != "pass":
         raise ManageError("article-package.json preflight is not pass")
+    validate_article_package(run_dir, state, brief, package, source_ids)
     images = package.get("images", [])
     if not isinstance(images, list):
         raise ManageError("article package images must be a list")
@@ -2406,6 +2512,15 @@ def self_check() -> dict:
     assert validate_source_url({"url": "https://example.com/source"}) == (
         "https://example.com/source"
     )
+    assert markdown_headings(
+        "# Title\n\n```md\n## Not a heading\n```\n\n## Real heading\n"
+    ) == (["Title"], ["Real heading"])
+    try:
+        markdown_headings("# Title\n\n```text\nunclosed\n")
+    except ManageError:
+        pass
+    else:
+        raise AssertionError("unclosed article code fence was accepted")
     assert validate_access_plan({"schema_version": 1})["legacy_default"] is True
     try:
         validate_access_plan({"schema_version": BRIEF_SCHEMA_VERSION})
@@ -3022,6 +3137,14 @@ def self_check() -> dict:
             run_dir / "article-package.json",
             {
                 "schema_version": BRIEF_SCHEMA_VERSION,
+                "run_id": "self-check",
+                "title": "Self check",
+                "body_path": "article.md",
+                "headings": [],
+                "links": [],
+                "inline_hashtags": [],
+                "claim_sources": {},
+                "content_fingerprint": sha256_file(run_dir / "article.md"),
                 "preflight": "pass",
                 "access": {"model": "free"},
                 "images": [
@@ -3075,6 +3198,26 @@ def self_check() -> dict:
             "# Image plan\n\n- body text: Inline text\n- thumbnail text: Self check\n",
             encoding="utf-8",
         )
+        package = read_json(run_dir / "article-package.json")
+        package["content_fingerprint"] = "0" * 64
+        write_json(run_dir / "article-package.json", package)
+        try:
+            checkpoint(workspace, "self-check", "preflight", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("stale article content fingerprint was accepted")
+        package["content_fingerprint"] = sha256_file(run_dir / "article.md")
+        package["headings"] = ["Missing heading"]
+        write_json(run_dir / "article-package.json", package)
+        try:
+            checkpoint(workspace, "self-check", "preflight", "completed", None)
+        except ManageError:
+            pass
+        else:
+            raise AssertionError("stale article headings were accepted")
+        package["headings"] = []
+        write_json(run_dir / "article-package.json", package)
         package = read_json(run_dir / "article-package.json")
         del package["images"][0]["placement"]
         write_json(run_dir / "article-package.json", package)
@@ -3269,6 +3412,14 @@ def self_check() -> dict:
             paid_dir / "article-package.json",
             {
                 "schema_version": BRIEF_SCHEMA_VERSION,
+                "run_id": "paid-check",
+                "title": "Paid self-check",
+                "body_path": "article.md",
+                "headings": ["Paid procedure"],
+                "links": [],
+                "inline_hashtags": [],
+                "claim_sources": {},
+                "content_fingerprint": sha256_file(paid_dir / "article.md"),
                 "preflight": "pass",
                 "access": {
                     "model": "paid",
@@ -3367,6 +3518,13 @@ def self_check() -> dict:
         shutil.copy2(
             paid_dir / "article-package.json",
             autopilot_paid_dir / "article-package.json",
+        )
+        autopilot_package = read_json(
+            autopilot_paid_dir / "article-package.json"
+        )
+        autopilot_package["run_id"] = "autopilot-paid-check"
+        write_json(
+            autopilot_paid_dir / "article-package.json", autopilot_package
         )
         checkpoint(
             workspace, "autopilot-paid-check", "preflight", "completed", None

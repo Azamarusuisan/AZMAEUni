@@ -38,6 +38,7 @@ REQUIRED_FILES = (
     "references/cms-note.md",
     "references/consulting-slide-images.md",
     "references/configuration.md",
+    "references/editorial-audit.md",
     "references/rich-media.md",
     "references/workflows.md",
     "assets/workspace-template/ASSETS.md",

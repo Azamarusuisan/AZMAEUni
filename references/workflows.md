@@ -123,7 +123,7 @@ sequenceDiagram
 | `outline` | Title, headings, sources, quotes, and image positions exist; paid outlines show the free/paid boundary; required outline confirmation is recorded before `draft` |
 | `draft` | Final article has no placeholders; paid runs include complete free and premium sections plus `paid-plan.md` |
 | `images` | Required files are in `runs/<id>/images/` with alt text; the requested rendering mode and consulting-slide visual QA gate pass |
-| `preflight` | Local package and asset validation pass |
+| `preflight` | Final editorial audit passes; the local package is recalculated from the article and asset validation passes |
 | `account_check` | Live handle exactly equals expected handle; paid runs are attended `guided` and have current price/paywall confirmations |
 | `stage` | Draft URL is checkpointed and content applied |
 | `verify` | Saved indicator and safe reread both pass; receipt counts and paths match every required body image and thumbnail |

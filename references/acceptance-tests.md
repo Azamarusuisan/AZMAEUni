@@ -13,6 +13,7 @@ Run the local and forward tests for every release. Run live tests only with expl
 7. Add one valid local PNG link and confirm `validate` records its relative path, MIME, byte count, and SHA-256 in `.state/asset-lock.json`.
 8. Separately confirm `validate` rejects a remote image, absolute path, `..`, missing file, workspace-escaping symlink, unsupported MIME, and file over 10 MB.
 9. Run `ready`, `new-run`, and `checkpoint`; confirm state is under `runs/<run-id>/`, the expected handle and immutable idempotency key are retained, the opaque draft reference is immutable, and any draft URL query or fragment is not stored.
+10. Confirm preflight rejects a stale article fingerprint, reordered or missing H2/H3 headings, a mismatched run ID or body path, duplicate or credential-bearing links, missing inline hashtags, and claim source IDs absent from `research.jsonl`.
 
 Pass when the repository remains unchanged except for the temporary workspace and every rejection exits nonzero without updating its previous asset lock.
 

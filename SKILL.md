@@ -180,6 +180,8 @@ If image generation is unavailable, stop before CMS mutation and leave the compl
 
 ## Preflight
 
+Read [references/editorial-audit.md](references/editorial-audit.md) after the article and images are final. Apply supported corrections locally, update the outline, Article Package, and content fingerprint together, then run preflight once more. Any later article or image edit invalidates that pass.
+
 Before opening the note editor, ensure:
 
 - the Brief passed its automation gate: confirmed in `guided`, or fully resolved with no conflicts in `autopilot`;
@@ -245,6 +247,7 @@ Do not claim unsupported browser control. If Safari Computer Use or the Chrome c
 - [references/research-platforms.md](references/research-platforms.md): question-based routing across official, academic, corporate, technical, news, and community sources.
 - [references/scheduling.md](references/scheduling.md): recurring unattended runs and their limits.
 - [references/source-packages.md](references/source-packages.md): safe folder/ZIP inspection, import, normalization, and portable export.
+- [references/editorial-audit.md](references/editorial-audit.md): one final audience, evidence, structure, and CMS-readiness pass before staging.
 - [references/consulting-slide-images.md](references/consulting-slide-images.md): image-generated executive slides, information architecture, prompts, and visual QA.
 - [references/rich-media.md](references/rich-media.md): note rich-editor structure, verified links, video embeds, and fallback behavior.
 - [references/visual-identity.md](references/visual-identity.md): optional per-user mascot onboarding, reference locking, appearance policy, and identity QA.

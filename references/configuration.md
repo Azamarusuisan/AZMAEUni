@@ -341,6 +341,8 @@ The package contains no browser selector or CMS-specific HTML:
 
 An image entry contains a run-relative path, MIME, SHA-256, kind, actual pixel dimensions, placement, alt text, and any supported claim IDs. Allowed kinds are `article`, `diagram`, `comparison`, `flow`, and `thumbnail`. When a rendered image contains text, include the exact `text` and set `text_verified` only after visually checking the final file character-for-character. When it contains the registered partner, include the approved source paths/hashes and set `identity_checked` only after comparing the final output with every invariant trait. Body-image count must exactly match `brief.json images.count`; a thumbnail is counted separately. note thumbnails must be exactly `1280x670`.
 
+For schema 3 packages, preflight recalculates `content_fingerprint` from `article.md`; compares the package run ID, body path, optional H1, and ordered H2/H3 headings; validates unique credential-free HTTPS links and inline hashtags; and rejects any `claim_sources` ID absent from `research.jsonl`. Editing the article after packaging therefore requires regenerating the affected package fields and rerunning preflight.
+
 The package `access.model` must equal the Brief. For paid articles, `paywall_after` and the price proposal must match the Brief, the exact heading must exist in `article.md`, and `paid-plan.md` must contain the same heading and amount. This proves that the paid article is structurally complete; it does not mean the CMS sale is active.
 
 ## Checkpoint and receipt
